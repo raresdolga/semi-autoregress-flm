@@ -16,6 +16,8 @@
 #   qsub -pe gpu 8 -l tmem=16G -l h_rt=240:00:00 -N flm-owt \
 #        scripts/train.sge.sh scripts/train/train_flm_owt.sh
 #
+# Defaults are 2 A100s; -pe gpu N and -l gpu_type=... override both.
+#
 # Set FLM_ROOT in your shell (or .bashrc) to project space; -V imports it.
 #
 # Long runs outlive h_rt. Train scripts pin a stable run directory and enable
@@ -36,9 +38,10 @@
 #$ -r y
 #$ -l h_rt=240:00:00
 #$ -l gpu=true
-#$ -pe gpu 4
+#$ -l gpu_type=a100
+#$ -pe gpu 2
 #$ -R y
-# tmem is HOST RAM, per GPU, multiplied by -pe gpu: 16G x 4 = 64G.
+# tmem is HOST RAM, per GPU, multiplied by -pe gpu: 16G x 2 = 32G.
 # h_vmem is deliberately absent: it breaks GPU allocation for PyTorch jobs.
 #$ -l tmem=16G
 
