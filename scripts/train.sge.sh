@@ -28,6 +28,10 @@
 #$ -N flm-train
 #$ -cwd
 #$ -j y
+# Scheduler logs land in logs/<job-name>.o<job-ID>, relative to the submit dir.
+# GE opens this file before the job starts and will NOT create the directory:
+# run `mkdir -p logs` once after cloning, or submits land in Eqw.
+#$ -o logs/
 #$ -V
 #$ -r y
 #$ -l h_rt=240:00:00

@@ -23,6 +23,10 @@ sweep_results_*/
 # Logs
 *.log
 
+# Grid Engine job logs (scripts/*.sge.sh write here via `#$ -o logs/`).
+# Created by scripts/submit.sh, since GE will not create it itself.
+logs/
+
 # Temp files
 temp.*
 

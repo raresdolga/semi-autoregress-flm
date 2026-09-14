@@ -28,6 +28,10 @@
 #$ -N proc-data
 #$ -cwd
 #$ -j y
+# Scheduler logs land in logs/<job-name>.o<job-ID>, relative to the submit dir.
+# GE opens this file before the job starts and will NOT create the directory:
+# run `mkdir -p logs` once after cloning, or submits land in Eqw.
+#$ -o logs/
 #$ -V
 # Tokenization is CPU-only: no -l gpu=true here.
 #$ -l h_rt=12:00:00
