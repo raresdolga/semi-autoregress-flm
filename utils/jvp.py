@@ -40,7 +40,10 @@ import torch
 import triton
 import triton.language as tl
 from einops import rearrange
-from flash_attn.flash_attn_interface import _flash_attn_backward, _flash_attn_varlen_backward
+from flash_attn.flash_attn_interface import (
+    _flash_attn_backward,
+    _flash_attn_varlen_backward,
+)
 
 DEVICE = "cuda"
 
@@ -88,8 +91,9 @@ def _attn_fwd_inner(
     for start_n in range(lo, hi, BLOCK_N):
         start_n = tl.multiple_of(start_n, BLOCK_N)
         # -- compute qk ----
-        k, tk = tl.load(K_block_ptr, boundary_check=(0, 1), padding_option="zero"), tl.load(
-            tK_block_ptr, boundary_check=(0, 1), padding_option="zero"
+        k, tk = (
+            tl.load(K_block_ptr, boundary_check=(0, 1), padding_option="zero"),
+            tl.load(tK_block_ptr, boundary_check=(0, 1), padding_option="zero"),
         )
         qk = tl.dot(q, k)
 
@@ -123,8 +127,9 @@ def _attn_fwd_inner(
         acc_A = acc_A * alpha[:, None]
         acc_B = acc_B * alpha[:, None]
         # update acc
-        v, tv = tl.load(V_block_ptr, boundary_check=(0, 1), padding_option="zero"), tl.load(
-            tV_block_ptr, boundary_check=(0, 1), padding_option="zero"
+        v, tv = (
+            tl.load(V_block_ptr, boundary_check=(0, 1), padding_option="zero"),
+            tl.load(tV_block_ptr, boundary_check=(0, 1), padding_option="zero"),
         )
         # boundary_v = tl.full([HEAD_DIM_V], hi, dtype=tl.int32)
         # size_n = start_n + offs_n
@@ -289,13 +294,16 @@ def _attn_fwd(
     offs_d_qk, offs_d_v = tl.arange(0, HEAD_DIM_QK), tl.arange(0, HEAD_DIM_V)
     # initialize pointer to m and l
     m_i = tl.zeros([BLOCK_M], dtype=tl.float32) - float("inf")
-    l_i = tl.zeros([BLOCK_M], dtype=tl.float32) # + 1.0
+    l_i = tl.zeros([BLOCK_M], dtype=tl.float32)  # + 1.0
     acc = tl.zeros([BLOCK_M, HEAD_DIM_V], dtype=tl.float32)
     r_i = tl.zeros([BLOCK_M], dtype=tl.float32)
     acc_A = tl.zeros([BLOCK_M, HEAD_DIM_V], dtype=tl.float32)
     acc_B = tl.zeros([BLOCK_M, HEAD_DIM_V], dtype=tl.float32)
     # load q: it will stay in SRAM throughout
-    q, tq = tl.load(Q_block_ptr, boundary_check=(0, 1), padding_option="zero"), tl.load(tQ_block_ptr, boundary_check=(0, 1), padding_option="zero")
+    q, tq = (
+        tl.load(Q_block_ptr, boundary_check=(0, 1), padding_option="zero"),
+        tl.load(tQ_block_ptr, boundary_check=(0, 1), padding_option="zero"),
+    )
     # stage 1: off-band
     # For causal = True, STAGE = 3 and _attn_fwd_inner gets 1 as its STAGE
     # For causal = False, STAGE = 1, and _attn_fwd_inner gets 3 as its STAGE
@@ -368,8 +376,12 @@ def _attn_fwd(
     acc = acc / l_i[:, None]
     tO_i = (acc_A + acc_B - (r_i[:, None] * acc)) / l_i[:, None]
     m_ptrs = M + off_hz * SEQ_LEN_Q + offs_m
-    O_block_ptr = Out + o_offset + offs_m[:, None] * stride_om + offs_d_v[None, :] * stride_od
-    tO_block_ptr = tOut + o_offset + offs_m[:, None] * stride_om + offs_d_v[None, :] * stride_od
+    O_block_ptr = (
+        Out + o_offset + offs_m[:, None] * stride_om + offs_d_v[None, :] * stride_od
+    )
+    tO_block_ptr = (
+        tOut + o_offset + offs_m[:, None] * stride_om + offs_d_v[None, :] * stride_od
+    )
     # mask if SEQ_LEN_Q % BLOCK_M != 0
     mask_lse = offs_m < SEQ_LEN_Q
     mask = offs_m[:, None] < SEQ_LEN_Q
@@ -403,10 +415,22 @@ def generate_qkv(q, k, v):
     # lse_unpad_fn = lambda x: rearrange(x, "b h s -> (b s) h")
     # pad_fn = lambda x: rearrange(x, "(b s) h d -> b h s d", b=batch_size)
 
-    cu_seqlens_q = torch.arange(0, (batch_size + 1) * seqlen_q, step=seqlen_q, dtype=torch.int32, device=q.device)
+    cu_seqlens_q = torch.arange(
+        0,
+        (batch_size + 1) * seqlen_q,
+        step=seqlen_q,
+        dtype=torch.int32,
+        device=q.device,
+    )
     max_seqlen_q = seqlen_q
 
-    cu_seqlens_k = torch.arange(0, (batch_size + 1) * seqlen_k, step=seqlen_k, dtype=torch.int32, device=q.device)
+    cu_seqlens_k = torch.arange(
+        0,
+        (batch_size + 1) * seqlen_k,
+        step=seqlen_k,
+        dtype=torch.int32,
+        device=q.device,
+    )
     max_seqlen_k = seqlen_k
 
     return (
@@ -443,9 +467,15 @@ class _attention(torch.autograd.Function):
         HEAD_DIM_QK, HEAD_DIM_V = q.shape[-1], v.shape[-1]
         assert HEAD_DIM_QK in {16, 32, 64, 128, 256}
         assert HEAD_DIM_V in {16, 32, 64, 128, 256}
-        assert (SEQ_LEN_Q == SEQ_LEN_KV) or (not causal), "Causal cross-attention is currently not supported."
+        assert (SEQ_LEN_Q == SEQ_LEN_KV) or (not causal), (
+            "Causal cross-attention is currently not supported."
+        )
         assert tq.shape == q.shape and tk.shape == k.shape and tv.shape == v.shape
-        assert tq.stride() == q.stride() and tk.stride() == k.stride() and tv.stride() == v.stride()
+        assert (
+            tq.stride() == q.stride()
+            and tk.stride() == k.stride()
+            and tv.stride() == v.stride()
+        )
         if sm_scale is None:
             sm_scale = HEAD_DIM_QK ** (-0.5)
         o = torch.empty((Z, H, SEQ_LEN_Q, HEAD_DIM_V), device=q.device, dtype=q.dtype)
@@ -504,7 +534,9 @@ class _attention(torch.autograd.Function):
     @staticmethod
     def backward(ctx, dout, *args):
         q, k, v, out, softmax_lse = ctx.saved_tensors
-        assert q.shape[-1] == k.shape[-1] and k.shape[-1] == v.shape[-1], "Backward not supported with different headdim."
+        assert q.shape[-1] == k.shape[-1] and k.shape[-1] == v.shape[-1], (
+            "Backward not supported with different headdim."
+        )
         # flash_attn uses the shape (batch_size, seqlen, nheads, headdim)
         # torch.nn.functional.scaled_dot_product_attention and this implementation use (batch_size, nheads, seqlen, headdim)
         if q.shape[-2] == k.shape[-2]:
@@ -528,9 +560,21 @@ class _attention(torch.autograd.Function):
                 deterministic=False,
             )
         else:
-            unpad_fn, lse_unpad_fn, pad_fn, cu_seqlens_q, cu_seqlens_k, max_seqlen_q, max_seqlen_k = generate_qkv(q, k, v)
+            (
+                unpad_fn,
+                lse_unpad_fn,
+                pad_fn,
+                cu_seqlens_q,
+                cu_seqlens_k,
+                max_seqlen_q,
+                max_seqlen_k,
+            ) = generate_qkv(q, k, v)
             q_unpad, k_unpad, v_unpad = unpad_fn(q), unpad_fn(k), unpad_fn(v)
-            dq, dk, dv = torch.empty_like(q_unpad), torch.empty_like(k_unpad), torch.empty_like(v_unpad)
+            dq, dk, dv = (
+                torch.empty_like(q_unpad),
+                torch.empty_like(k_unpad),
+                torch.empty_like(v_unpad),
+            )
             _flash_attn_varlen_backward(
                 unpad_fn(dout),
                 q_unpad,
@@ -562,9 +606,21 @@ attention = _attention.apply
 
 def _test_fwd_bwd(Z, H, SEQ_LEN, HEAD_DIM, causal, dtype=torch.float16):
     torch.manual_seed(20)
-    q = torch.empty((Z, H, SEQ_LEN, HEAD_DIM), dtype=dtype, device=DEVICE).normal_(mean=0.0, std=0.5).requires_grad_()
-    k = torch.empty((Z, H, SEQ_LEN, HEAD_DIM), dtype=dtype, device=DEVICE).normal_(mean=0.0, std=0.5).requires_grad_()
-    v = torch.empty((Z, H, SEQ_LEN, HEAD_DIM), dtype=dtype, device=DEVICE).normal_(mean=0.0, std=0.5).requires_grad_()
+    q = (
+        torch.empty((Z, H, SEQ_LEN, HEAD_DIM), dtype=dtype, device=DEVICE)
+        .normal_(mean=0.0, std=0.5)
+        .requires_grad_()
+    )
+    k = (
+        torch.empty((Z, H, SEQ_LEN, HEAD_DIM), dtype=dtype, device=DEVICE)
+        .normal_(mean=0.0, std=0.5)
+        .requires_grad_()
+    )
+    v = (
+        torch.empty((Z, H, SEQ_LEN, HEAD_DIM), dtype=dtype, device=DEVICE)
+        .normal_(mean=0.0, std=0.5)
+        .requires_grad_()
+    )
     tq = torch.zeros_like(q)
     tk = torch.zeros_like(k)
     tv = torch.zeros_like(v)
@@ -600,17 +656,37 @@ def test_fwd_bwd():
         for causal in [True, False]:
             for dtype in [torch.float16, torch.bfloat16]:
                 _test_fwd_bwd(*shape, causal, dtype)
-                print(f"Shape={shape}, Causal={causal}, Dtype={dtype} Passed (SA fwd/bwd).")
+                print(
+                    f"Shape={shape}, Causal={causal}, Dtype={dtype} Passed (SA fwd/bwd)."
+                )
 
 
 def _test_jvp(Z, H, SEQ_LEN, HEAD_DIM, causal, dtype=torch.float16):
     torch.manual_seed(20)
-    q = torch.empty((Z, H, SEQ_LEN, HEAD_DIM), dtype=dtype, device=DEVICE).normal_(mean=0.0, std=0.5).requires_grad_()
-    k = torch.empty((Z, H, SEQ_LEN, HEAD_DIM), dtype=dtype, device=DEVICE).normal_(mean=0.0, std=0.5).requires_grad_()
-    v = torch.empty((Z, H, SEQ_LEN, HEAD_DIM), dtype=dtype, device=DEVICE).normal_(mean=0.0, std=0.5).requires_grad_()
-    tq = torch.empty((Z, H, SEQ_LEN, HEAD_DIM), dtype=dtype, device=DEVICE).normal_(mean=0.0, std=0.5)
-    tk = torch.empty((Z, H, SEQ_LEN, HEAD_DIM), dtype=dtype, device=DEVICE).normal_(mean=0.0, std=0.5)
-    tv = torch.empty((Z, H, SEQ_LEN, HEAD_DIM), dtype=dtype, device=DEVICE).normal_(mean=0.0, std=0.5)
+    q = (
+        torch.empty((Z, H, SEQ_LEN, HEAD_DIM), dtype=dtype, device=DEVICE)
+        .normal_(mean=0.0, std=0.5)
+        .requires_grad_()
+    )
+    k = (
+        torch.empty((Z, H, SEQ_LEN, HEAD_DIM), dtype=dtype, device=DEVICE)
+        .normal_(mean=0.0, std=0.5)
+        .requires_grad_()
+    )
+    v = (
+        torch.empty((Z, H, SEQ_LEN, HEAD_DIM), dtype=dtype, device=DEVICE)
+        .normal_(mean=0.0, std=0.5)
+        .requires_grad_()
+    )
+    tq = torch.empty((Z, H, SEQ_LEN, HEAD_DIM), dtype=dtype, device=DEVICE).normal_(
+        mean=0.0, std=0.5
+    )
+    tk = torch.empty((Z, H, SEQ_LEN, HEAD_DIM), dtype=dtype, device=DEVICE).normal_(
+        mean=0.0, std=0.5
+    )
+    tv = torch.empty((Z, H, SEQ_LEN, HEAD_DIM), dtype=dtype, device=DEVICE).normal_(
+        mean=0.0, std=0.5
+    )
     sm_scale = 0.5
 
     def naive_attention(q, k, v):
@@ -667,13 +743,30 @@ for mode in ["fwd", "bwd"]:
 
 
 @triton.testing.perf_report(configs)
-def bench_flash_attention(BATCH, H, SEQ_LEN, HEAD_DIM, causal, mode, provider, device=DEVICE):
+def bench_flash_attention(
+    BATCH, H, SEQ_LEN, HEAD_DIM, causal, mode, provider, device=DEVICE
+):
     assert mode in ["fwd", "bwd"]
     dtype = torch.float16
     if "triton" in provider:
-        q = torch.randn((BATCH, H, SEQ_LEN, HEAD_DIM), dtype=dtype, device=device, requires_grad=True)
-        k = torch.randn((BATCH, H, SEQ_LEN, HEAD_DIM), dtype=dtype, device=device, requires_grad=True)
-        v = torch.randn((BATCH, H, SEQ_LEN, HEAD_DIM), dtype=dtype, device=device, requires_grad=True)
+        q = torch.randn(
+            (BATCH, H, SEQ_LEN, HEAD_DIM),
+            dtype=dtype,
+            device=device,
+            requires_grad=True,
+        )
+        k = torch.randn(
+            (BATCH, H, SEQ_LEN, HEAD_DIM),
+            dtype=dtype,
+            device=device,
+            requires_grad=True,
+        )
+        v = torch.randn(
+            (BATCH, H, SEQ_LEN, HEAD_DIM),
+            dtype=dtype,
+            device=device,
+            requires_grad=True,
+        )
         tq = torch.zeros_like(q)
         tk = torch.zeros_like(k)
         tv = torch.zeros_like(v)
@@ -687,10 +780,27 @@ def bench_flash_attention(BATCH, H, SEQ_LEN, HEAD_DIM, causal, mode, provider, d
     if provider == "flash":
         from flash_attn.flash_attn_interface import flash_attn_func
 
-        q = torch.randn((BATCH, H, SEQ_LEN, HEAD_DIM), dtype=dtype, device=device, requires_grad=True)
-        k = torch.randn((BATCH, H, SEQ_LEN, HEAD_DIM), dtype=dtype, device=device, requires_grad=True)
-        v = torch.randn((BATCH, H, SEQ_LEN, HEAD_DIM), dtype=dtype, device=device, requires_grad=True)
-        fn = lambda: flash_attn_func(q.transpose(1, 2), k.transpose(1, 2), v.transpose(1, 2), causal=causal)
+        q = torch.randn(
+            (BATCH, H, SEQ_LEN, HEAD_DIM),
+            dtype=dtype,
+            device=device,
+            requires_grad=True,
+        )
+        k = torch.randn(
+            (BATCH, H, SEQ_LEN, HEAD_DIM),
+            dtype=dtype,
+            device=device,
+            requires_grad=True,
+        )
+        v = torch.randn(
+            (BATCH, H, SEQ_LEN, HEAD_DIM),
+            dtype=dtype,
+            device=device,
+            requires_grad=True,
+        )
+        fn = lambda: flash_attn_func(
+            q.transpose(1, 2), k.transpose(1, 2), v.transpose(1, 2), causal=causal
+        )
         if mode == "bwd":
             o = fn()
             do = torch.randn_like(o)
@@ -712,9 +822,21 @@ def bench_flash_attention(BATCH, H, SEQ_LEN, HEAD_DIM, causal, mode, provider, d
 
 def _test_fwd_bwd_ca(Z, H, SEQ_LEN_Q, SEQ_LEN_KV, HEAD_DIM, dtype=torch.float16):
     torch.manual_seed(20)
-    q = torch.empty((Z, H, SEQ_LEN_Q, HEAD_DIM), dtype=dtype, device=DEVICE).normal_(mean=0.0, std=0.5).requires_grad_()
-    k = torch.empty((Z, H, SEQ_LEN_KV, HEAD_DIM), dtype=dtype, device=DEVICE).normal_(mean=0.0, std=0.5).requires_grad_()
-    v = torch.empty((Z, H, SEQ_LEN_KV, HEAD_DIM), dtype=dtype, device=DEVICE).normal_(mean=0.0, std=0.5).requires_grad_()
+    q = (
+        torch.empty((Z, H, SEQ_LEN_Q, HEAD_DIM), dtype=dtype, device=DEVICE)
+        .normal_(mean=0.0, std=0.5)
+        .requires_grad_()
+    )
+    k = (
+        torch.empty((Z, H, SEQ_LEN_KV, HEAD_DIM), dtype=dtype, device=DEVICE)
+        .normal_(mean=0.0, std=0.5)
+        .requires_grad_()
+    )
+    v = (
+        torch.empty((Z, H, SEQ_LEN_KV, HEAD_DIM), dtype=dtype, device=DEVICE)
+        .normal_(mean=0.0, std=0.5)
+        .requires_grad_()
+    )
     tq = torch.zeros_like(q)
     tk = torch.zeros_like(k)
     tv = torch.zeros_like(v)
@@ -744,20 +866,47 @@ def _test_fwd_bwd_ca(Z, H, SEQ_LEN_Q, SEQ_LEN_KV, HEAD_DIM, dtype=torch.float16)
 
 
 def test_fwd_bwd_ca():
-    for shape in [(1, 2, 256, 1024, 128), (1, 2, 1024, 256, 128), (1, 2, 1024, 512, 64), (1, 2, 1000, 515, 64)]:
+    for shape in [
+        (1, 2, 256, 1024, 128),
+        (1, 2, 1024, 256, 128),
+        (1, 2, 1024, 512, 64),
+        (1, 2, 1000, 515, 64),
+    ]:
         for dtype in [torch.float16, torch.bfloat16]:
             _test_fwd_bwd_ca(*shape, dtype)
-            print(f"Shape={shape}, Dtype={dtype} Passed (CA fwd/bwd with the same headdim).")
+            print(
+                f"Shape={shape}, Dtype={dtype} Passed (CA fwd/bwd with the same headdim)."
+            )
 
 
-def _test_jvp_ca(Z, H, SEQ_LEN_Q, SEQ_LEN_KV, HEAD_DIM_QK, HEAD_DIM_V, dtype=torch.float16):
+def _test_jvp_ca(
+    Z, H, SEQ_LEN_Q, SEQ_LEN_KV, HEAD_DIM_QK, HEAD_DIM_V, dtype=torch.float16
+):
     torch.manual_seed(20)
-    q = torch.empty((Z, H, SEQ_LEN_Q, HEAD_DIM_QK), dtype=dtype, device=DEVICE).normal_(mean=0.0, std=0.5).requires_grad_()
-    k = torch.empty((Z, H, SEQ_LEN_KV, HEAD_DIM_QK), dtype=dtype, device=DEVICE).normal_(mean=0.0, std=0.5).requires_grad_()
-    v = torch.empty((Z, H, SEQ_LEN_KV, HEAD_DIM_V), dtype=dtype, device=DEVICE).normal_(mean=0.0, std=0.5).requires_grad_()
-    tq = torch.empty((Z, H, SEQ_LEN_Q, HEAD_DIM_QK), dtype=dtype, device=DEVICE).normal_(mean=0.0, std=0.5)
-    tk = torch.empty((Z, H, SEQ_LEN_KV, HEAD_DIM_QK), dtype=dtype, device=DEVICE).normal_(mean=0.0, std=0.5)
-    tv = torch.empty((Z, H, SEQ_LEN_KV, HEAD_DIM_V), dtype=dtype, device=DEVICE).normal_(mean=0.0, std=0.5)
+    q = (
+        torch.empty((Z, H, SEQ_LEN_Q, HEAD_DIM_QK), dtype=dtype, device=DEVICE)
+        .normal_(mean=0.0, std=0.5)
+        .requires_grad_()
+    )
+    k = (
+        torch.empty((Z, H, SEQ_LEN_KV, HEAD_DIM_QK), dtype=dtype, device=DEVICE)
+        .normal_(mean=0.0, std=0.5)
+        .requires_grad_()
+    )
+    v = (
+        torch.empty((Z, H, SEQ_LEN_KV, HEAD_DIM_V), dtype=dtype, device=DEVICE)
+        .normal_(mean=0.0, std=0.5)
+        .requires_grad_()
+    )
+    tq = torch.empty(
+        (Z, H, SEQ_LEN_Q, HEAD_DIM_QK), dtype=dtype, device=DEVICE
+    ).normal_(mean=0.0, std=0.5)
+    tk = torch.empty(
+        (Z, H, SEQ_LEN_KV, HEAD_DIM_QK), dtype=dtype, device=DEVICE
+    ).normal_(mean=0.0, std=0.5)
+    tv = torch.empty(
+        (Z, H, SEQ_LEN_KV, HEAD_DIM_V), dtype=dtype, device=DEVICE
+    ).normal_(mean=0.0, std=0.5)
     sm_scale = 0.5
 
     def naive_attention(q, k, v):
@@ -785,7 +934,9 @@ def test_jvp_ca():
     ]:
         for dtype in [torch.float16, torch.bfloat16]:
             _test_jvp_ca(*shape, dtype)
-            print(f"Shape={shape}, Dtype={dtype} Passed (CA fwd/JVP with different headdim).")
+            print(
+                f"Shape={shape}, Dtype={dtype} Passed (CA fwd/JVP with different headdim)."
+            )
 
 
 if __name__ == "__main__":

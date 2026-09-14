@@ -1,0 +1,27 @@
+# LM1B from a flat uint16 token stream (data.backend=memmap).
+#
+# Prepare once before training:
+#   scripts/local/prepare_lm1b_memmap.sh        (or the SGE job that wraps it)
+#
+# Based on lm1b-wrap.yaml, not lm1b.yaml: the memmap backend cannot express
+# wrap=False padded per-document rows and rejects it outright.
+#
+# The prepared stream is model-length agnostic, so sweeping model.length needs
+# no re-prep. Paths must be run-invariant: hydra.job.chdir moves the working
+# directory per run, so a relative './cache' would re-download every time.
+# PWD rather than ${hydra:runtime.cwd} as the fallback: OmegaConf resolves a
+# default even when the env var is set, and ${hydra:...} only resolves inside a
+# Hydra run, which would break offline prep and any plain import of the config.
+#
+# Note LM1B has no 'validation' split -- dataloaders._TEST_AS_VALIDATION maps
+# data.valid=lm1b onto the 'test' split, so prep must produce test.bin.
+train: lm1b
+valid: lm1b
+tokenizer_name_or_path: bert-base-uncased
+backend: memmap
+cache_dir: ${oc.env:FLM_DATA_DIR,${oc.env:PWD}/datasets}/lm1b
+memmap_dir: ${oc.env:FLM_DATA_DIR,${oc.env:PWD}/datasets}/memmap
+wrap: True
+streaming: False
+insert_train_eos: True
+insert_valid_eos: True

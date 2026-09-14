@@ -7,6 +7,9 @@ __pycache__/
 # Hydra outputs
 outputs/
 
+# Symlink to $FLM_ROOT (datasets + run outputs on the data disk)
+/data
+
 # Generated samples
 samples/
 tex/
@@ -46,3 +49,6 @@ hf_upload/
 # OS
 .DS_Store
 Thumbs.db
+
+# old scripts
+old_scripts/

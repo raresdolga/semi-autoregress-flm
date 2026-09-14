@@ -1,0 +1,21 @@
+# wikitext2 from a flat uint16 token stream (data.backend=memmap).
+#
+# Prepare once before training:
+#   scripts/local/prepare_wikitext2_memmap.sh
+#
+# The prepared stream is model-length agnostic, so sweeping model.length needs
+# no re-prep. Paths must be run-invariant: hydra.job.chdir moves the working
+# directory per run, so a relative './cache' would re-download every time.
+# PWD rather than ${hydra:runtime.cwd} as the fallback: OmegaConf resolves a
+# default even when the env var is set, and ${hydra:...} only resolves inside a
+# Hydra run, which would break offline prep and any plain import of the config.
+train: wikitext2
+valid: wikitext2
+tokenizer_name_or_path: gpt2
+backend: memmap
+cache_dir: ${oc.env:FLM_DATA_DIR,${oc.env:PWD}/datasets}/wikitext2
+memmap_dir: ${oc.env:FLM_DATA_DIR,${oc.env:PWD}/datasets}/memmap
+wrap: True
+streaming: False
+insert_train_eos: True
+insert_valid_eos: True

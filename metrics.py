@@ -10,6 +10,7 @@ import torch.nn.functional as F
 import torchmetrics
 import transformers
 from transformers import logging
+
 logging.set_verbosity_error()
 
 # TODO: for tc
@@ -19,7 +20,7 @@ LOG2 = math.log(2)
 # For take the total correlation between x0, x1, and y
 
 
-class TC():
+class TC:
     def __init__(self):
         self.x0 = []
         self.x1 = torch.tensor([])
@@ -77,7 +78,7 @@ class TC():
         # We'll store each flattened row as a tuple, then count frequencies.
         joint_counts = defaultdict(int)
         for row in flattened:
-            key = tuple(row)   # row is length-1024
+            key = tuple(row)  # row is length-1024
             joint_counts[key] += 1
         H_joint = self.entropy_from_counts(joint_counts, base=2)
 
@@ -131,8 +132,7 @@ class TC():
             # print(len(x1_list))
             # shape = (num_samples_for_this_group, 1024)
             group = torch.stack(x0_x1_tup, dim=0)
-            T_val, sum_marginals, H_joint = self.compute_total_correlation_x1(
-                group)
+            T_val, sum_marginals, H_joint = self.compute_total_correlation_x1(group)
             results[key] = T_val
             marginals[key] = sum_marginals
             joints[key] = H_joint
@@ -143,8 +143,9 @@ class TC():
         """
         Compute the total correlation of x1 given x0 and y.
         """
-        tc_results, joints, marginals = self.compute_conditional_total_correlation_x1_given_x0y(
-            self.x0, self.x1)
+        tc_results, joints, marginals = (
+            self.compute_conditional_total_correlation_x1_given_x0y(self.x0, self.x1)
+        )
 
         avg_tc = np.mean(list(tc_results.values()))
         avg_joints = np.mean(list(joints.values()))
@@ -154,9 +155,11 @@ class TC():
 
 
 class NLL(torchmetrics.aggregation.MeanMetric):
-    def update(self,
-               value: typing.Union[float, torch.Tensor],
-               weight: typing.Union[float, torch.Tensor] = 1.0) -> None:
+    def update(
+        self,
+        value: typing.Union[float, torch.Tensor],
+        weight: typing.Union[float, torch.Tensor] = 1.0,
+    ) -> None:
         """Update state with data.
 
         Args:
@@ -170,16 +173,11 @@ class NLL(torchmetrics.aggregation.MeanMetric):
         """
         # broadcast weight to value shape
         if not isinstance(value, torch.Tensor):
-            value = torch.as_tensor(value, dtype=self.dtype,
-                                    device=self.device)
-        if (weight is not None
-                and not isinstance(weight, torch.Tensor)):
-            weight = torch.as_tensor(weight,
-                                     dtype=self.dtype,
-                                     device=self.device)
+            value = torch.as_tensor(value, dtype=self.dtype, device=self.device)
+        if weight is not None and not isinstance(weight, torch.Tensor):
+            weight = torch.as_tensor(weight, dtype=self.dtype, device=self.device)
         weight = torch.broadcast_to(weight, value.shape)
-        value, weight = self._cast_and_nan_check_input(value,
-                                                       weight)
+        value, weight = self._cast_and_nan_check_input(value, weight)
 
         if value.numel() == 0:
             return
@@ -208,14 +206,16 @@ class Perplexity(NLL):
 
 
 class Metrics:
-    def __init__(self, gen_ppl_eval_model_name_or_path=None,
-                 eval_ppl_batch_size=None) -> None:
-        metrics = torchmetrics.MetricCollection({
-            'nll': NLL(), 'bpd': BPD(), 'ppl': Perplexity()})
+    def __init__(
+        self, gen_ppl_eval_model_name_or_path=None, eval_ppl_batch_size=None
+    ) -> None:
+        metrics = torchmetrics.MetricCollection(
+            {"nll": NLL(), "bpd": BPD(), "ppl": Perplexity()}
+        )
         metrics.set_dtype(torch.float64)
-        self.train_nlls = metrics.clone(prefix='train/')
+        self.train_nlls = metrics.clone(prefix="train/")
         self.train_aux = BPD()
-        self.valid_nlls = metrics.clone(prefix='val/')
+        self.valid_nlls = metrics.clone(prefix="val/")
         self.valid_aux = BPD()
         self.gen_ppl = Perplexity()
         self.sample_entropy = torchmetrics.aggregation.MeanMetric()
@@ -223,8 +223,9 @@ class Metrics:
         self.tc = TC()
         self.eval_ppl_batch_size = eval_ppl_batch_size
         self.gen_ppl_eval_model_name_or_path = gen_ppl_eval_model_name_or_path
-        self.tokenizer = transformers.AutoTokenizer.\
-            from_pretrained(gen_ppl_eval_model_name_or_path)
+        self.tokenizer = transformers.AutoTokenizer.from_pretrained(
+            gen_ppl_eval_model_name_or_path
+        )
         if self.tokenizer.pad_token is None:
             self.tokenizer.pad_token = self.tokenizer.eos_token
             self.tokenizer.pad_token_id = self.tokenizer.eos_token_id
@@ -254,8 +255,7 @@ class Metrics:
         self.valid_aux.update(aux_loss, num_tokens)
 
     @torch.no_grad()
-    def _eval_retokenize(self, text_samples, max_length,
-                         device):
+    def _eval_retokenize(self, text_samples, max_length, device):
         """Retokenizes samples for the eval model.
 
         Args:
@@ -265,39 +265,38 @@ class Metrics:
             attn_mask: Attention mask for the eval model
             eval_context_size: Size of the context for the eval model
         """
-        if 'llama2' in self.gen_ppl_eval_model_name_or_path.lower():
+        if "llama2" in self.gen_ppl_eval_model_name_or_path.lower():
             tokenizer_kwargs = {
-                'text_samples': text_samples,
-                'return_tensors': 'pt',
-                'return_token_type_ids': False,
-                'return_attention_mask': True,
-                'truncation': True,
-                'padding': True,
-                'max_length': max_length,
+                "text_samples": text_samples,
+                "return_tensors": "pt",
+                "return_token_type_ids": False,
+                "return_attention_mask": True,
+                "truncation": True,
+                "padding": True,
+                "max_length": max_length,
             }
             eval_context_size = 4096
-        elif 'llama3' in self.gen_ppl_eval_model_name_or_path.lower():
+        elif "llama3" in self.gen_ppl_eval_model_name_or_path.lower():
             tokenizer_kwargs = {
-                'text': text_samples,
-                'return_tensors': 'pt',
-                'padding': True,
+                "text": text_samples,
+                "return_tensors": "pt",
+                "padding": True,
             }
             eval_context_size = 8192
         else:
             tokenizer_kwargs = {
-                'return_tensors': 'pt',
-                'return_token_type_ids': False,
-                'return_attention_mask': True,
-                'truncation': True,
-                'padding': True,
-                'max_length': max_length,
+                "return_tensors": "pt",
+                "return_token_type_ids": False,
+                "return_attention_mask": True,
+                "truncation": True,
+                "padding": True,
+                "max_length": max_length,
             }
             eval_context_size = 1024
-        samples = self.tokenizer(text_samples,
-                                 **tokenizer_kwargs)
-        attn_mask = samples['attention_mask']
-        samples = samples['input_ids']
-        if 'llama' not in self.gen_ppl_eval_model_name_or_path.lower():
+        samples = self.tokenizer(text_samples, **tokenizer_kwargs)
+        attn_mask = samples["attention_mask"]
+        samples = samples["input_ids"]
+        if "llama" not in self.gen_ppl_eval_model_name_or_path.lower():
             attn_mask = attn_mask.to(device)
             samples = samples.to(device)
         return samples, attn_mask, eval_context_size
@@ -305,19 +304,17 @@ class Metrics:
     @torch.no_grad()
     def record_entropy(self, tokens):
         for sample in tokens:
-            _, counts = torch.unique(
-                sample, return_counts=True, sorted=False)
-            entropy = torch.special.entr(
-                counts.float() / counts.sum()).sum().item()
+            _, counts = torch.unique(sample, return_counts=True, sorted=False)
+            entropy = torch.special.entr(counts.float() / counts.sum()).sum().item()
             self.sample_entropy.update(entropy)
 
     @torch.no_grad()
     def record_unique_tokens(self, samples):
         """Record the count of unique tokens across all samples.
-        
+
         Args:
             samples: torch.Tensor of shape (batch_size, seq_length)
-        
+
         Returns:
             int: Number of unique tokens in the samples
         """
@@ -331,65 +328,69 @@ class Metrics:
 
     @torch.no_grad()
     def record_generative_perplexity(
-            self,
-            text_samples: typing.List[str],
-            max_length: int,
-            retokenize: bool = True,
-            device='cuda') -> None:
+        self,
+        text_samples: typing.List[str],
+        max_length: int,
+        retokenize: bool = True,
+        device="cuda",
+    ) -> None:
 
-        os.environ['TOKENIZERS_PARALLELISM'] = 'false'
-        if 'llama' not in self.gen_ppl_eval_model_name_or_path:
+        os.environ["TOKENIZERS_PARALLELISM"] = "false"
+        if "llama" not in self.gen_ppl_eval_model_name_or_path:
             eval_model = transformers.AutoModelForCausalLM.from_pretrained(
-                self.gen_ppl_eval_model_name_or_path).eval()
+                self.gen_ppl_eval_model_name_or_path
+            ).eval()
             eval_model = eval_model.to(device)
             # Re-tokenize using eval model's tokenizer
             if retokenize:
-                (samples, attn_mask,
-                 eval_context_size) = self._eval_retokenize(
-                    text_samples, max_length=max_length, device=device)
+                (samples, attn_mask, eval_context_size) = self._eval_retokenize(
+                    text_samples, max_length=max_length, device=device
+                )
             else:
                 samples = text_samples
                 attn_mask = torch.ones(samples.shape).to(device)
                 eval_context_size = samples.shape[-1]
-            batch_size = min(self.eval_ppl_batch_size,
-                             samples.shape[0])
+            batch_size = min(self.eval_ppl_batch_size, samples.shape[0])
             num_batches = samples.shape[0] // batch_size
             for i in range(num_batches):
                 _samples = torch.split(
-                    samples[i * batch_size: (i + 1) * batch_size],
+                    samples[i * batch_size : (i + 1) * batch_size],
                     eval_context_size,
-                    dim=-1)
+                    dim=-1,
+                )
                 _attn_mask = torch.split(
-                    attn_mask[i * batch_size: (i + 1) * batch_size],
+                    attn_mask[i * batch_size : (i + 1) * batch_size],
                     eval_context_size,
-                    dim=-1)
-                for (sample_chunk, attn_mask_chunk) in zip(_samples,
-                                                           _attn_mask):
-                    logits = eval_model(sample_chunk.to(device),
-                                        attention_mask=attn_mask_chunk.to(device))
+                    dim=-1,
+                )
+                for sample_chunk, attn_mask_chunk in zip(_samples, _attn_mask):
+                    logits = eval_model(
+                        sample_chunk.to(device),
+                        attention_mask=attn_mask_chunk.to(device),
+                    )
                     logits = logits[0].transpose(-1, -2)
-                    nlls = F.cross_entropy(logits[..., :-1],
-                                           sample_chunk[..., 1:],
-                                           reduction='none')
-                    first_eos = (
-                        sample_chunk
-                        == self.tokenizer.eos_token_id).cumsum(-1) == 1
+                    nlls = F.cross_entropy(
+                        logits[..., :-1], sample_chunk[..., 1:], reduction="none"
+                    )
+                    first_eos = (sample_chunk == self.tokenizer.eos_token_id).cumsum(
+                        -1
+                    ) == 1
                     token_mask = sample_chunk != self.tokenizer.eos_token_id
                     valid_tokens = first_eos[..., 1:] + token_mask[..., 1:]
                     self.gen_ppl.update(nlls * valid_tokens, valid_tokens)
         else:
             eval_model = transformers.AutoModelForCausalLM.from_pretrained(
-                self.gen_ppl_eval_model_name_or_path,
-                torch_dtype=torch.bfloat16).eval()
+                self.gen_ppl_eval_model_name_or_path, torch_dtype=torch.bfloat16
+            ).eval()
             eval_model = eval_model.to(device)
             # Re-tokenize using eval model's tokenizer
             tokenizer_llama = transformers.AutoTokenizer.from_pretrained(
-                self.gen_ppl_eval_model_name_or_path)
+                self.gen_ppl_eval_model_name_or_path
+            )
             if tokenizer_llama.pad_token is None:
                 tokenizer_llama.pad_token = tokenizer_llama.eos_token
                 tokenizer_llama.pad_token_id = tokenizer_llama.eos_token_id
-            tokenizer_gpt = transformers.AutoTokenizer.from_pretrained(
-                'gpt2')
+            tokenizer_gpt = transformers.AutoTokenizer.from_pretrained("gpt2")
             if tokenizer_gpt.pad_token is None:
                 tokenizer_gpt.pad_token = tokenizer_gpt.eos_token
                 tokenizer_gpt.pad_token_id = tokenizer_gpt.eos_token_id
@@ -402,31 +403,34 @@ class Metrics:
                 # 2. encode each batch
                 # 3. eval each batch of 16
                 for i in range(num_batches):
-                    batch_text_samples = text_samples[i *
-                                                      batch_size:(i+1)*batch_size]
+                    batch_text_samples = text_samples[
+                        i * batch_size : (i + 1) * batch_size
+                    ]
                     encoded_inputs = tokenizer_llama(
                         batch_text_samples,
                         return_tensors="pt",
                         padding=True,
                     )
 
-                    input_ids = encoded_inputs['input_ids'].to(device)
-                    attention_mask = encoded_inputs['attention_mask'].to(
-                        device)
+                    input_ids = encoded_inputs["input_ids"].to(device)
+                    attention_mask = encoded_inputs["attention_mask"].to(device)
 
                     labels = input_ids.clone()
                     labels[labels == tokenizer_llama.pad_token_id] = 50000
                     labels = labels.to(device)
 
                     outputs = eval_model(
-                        input_ids=input_ids, attention_mask=attention_mask, labels=labels)
+                        input_ids=input_ids,
+                        attention_mask=attention_mask,
+                        labels=labels,
+                    )
 
                     llama_logits = outputs.logits
 
                     logits = llama_logits.transpose(-1, -2)
-                    nlls = F.cross_entropy(logits[..., :-1],
-                                           labels[..., 1:],
-                                           reduction='none')
+                    nlls = F.cross_entropy(
+                        logits[..., :-1], labels[..., 1:], reduction="none"
+                    )
                     valid_tokens = attention_mask[..., 1:].bool()
                     self.gen_ppl.update(nlls * valid_tokens, valid_tokens)
 

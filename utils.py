@@ -26,10 +26,9 @@ from scipy.stats import norm
 from scipy.special import log_ndtr  # stable log
 from scipy.interpolate import CubicSpline
 
+
 def count_parameters(model):
-    return sum(p.numel()
-               for p in model.parameters()
-               if p.requires_grad)
+    return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
 
 def fsspec_exists(filename):
@@ -63,13 +62,12 @@ class LRHalveScheduler:
     def __call__(self, current_step):
         if current_step < self.warmup_steps:
             return current_step / self.warmup_steps
-        return 0.5 ** ((current_step - self.warmup_steps)
-                       // self.n_halve_steps)
+        return 0.5 ** ((current_step - self.warmup_steps) // self.n_halve_steps)
 
 
 class CosineDecayWarmupLRScheduler(
-        CosineLRScheduler,
-        torch.optim.lr_scheduler._LRScheduler):
+    CosineLRScheduler, torch.optim.lr_scheduler._LRScheduler
+):
     """Wrap timm.scheduler.CosineLRScheduler
     Enables calling scheduler.step() without passing in epoch.
     Supports resuming as well.
@@ -136,25 +134,27 @@ class GradientInspectionCallback(lightning.Callback):
 
         if gradients:
             grads = torch.cat((gradients))
-            if not hasattr(pl_module, 'grad_accum_buffer'):
-                pl_module.grad_step = torch.tensor(
-                    0, device=pl_module.device)
+            if not hasattr(pl_module, "grad_accum_buffer"):
+                pl_module.grad_step = torch.tensor(0, device=pl_module.device)
                 pl_module.grad_accum_buffer = torch.zeros(
-                    self.num_grads_log,
-                    grads.shape[0],
-                    device=pl_module.device)
+                    self.num_grads_log, grads.shape[0], device=pl_module.device
+                )
             pl_module.grad_accum_buffer[pl_module.grad_step] = grads
             pl_module.grad_step += 1
 
-        if (hasattr(pl_module, 'grad_accum_buffer')
-                and pl_module.grad_step == self.num_grads_log):
+        if (
+            hasattr(pl_module, "grad_accum_buffer")
+            and pl_module.grad_step == self.num_grads_log
+        ):
             grads = pl_module.grad_accum_buffer
             grad_var = grads.std(0).mean()
-            pl_module.log(name='trainer/grad_var',
-                          value=grad_var.item(),
-                          on_step=True,
-                          on_epoch=False,
-                          sync_dist=True)
+            pl_module.log(
+                name="trainer/grad_var",
+                value=grad_var.item(),
+                on_step=True,
+                on_epoch=False,
+                sync_dist=True,
+            )
             # TODO: save the grads tensor as a numpy array
             # and visualize mean, median, top-k
             pl_module.grad_accum_buffer.zero_()
@@ -169,23 +169,28 @@ def get_logger(name=__name__, level=logging.INFO) -> logging.Logger:
 
     # this ensures all logging levels get marked with the rank zero decorator
     # otherwise logs would get multiplied for each GPU process in multi-GPU setup
-    for level in ('debug', 'info', 'warning', 'error',
-                  'exception', 'fatal', 'critical'):
-        setattr(logger,
-                level,
-                lightning.pytorch.utilities.rank_zero_only(
-                    getattr(logger, level)))
+    for level in (
+        "debug",
+        "info",
+        "warning",
+        "error",
+        "exception",
+        "fatal",
+        "critical",
+    ):
+        setattr(
+            logger,
+            level,
+            lightning.pytorch.utilities.rank_zero_only(getattr(logger, level)),
+        )
 
     return logger
 
 
 # Copied from https://github.com/jdeschena/sdtt/blob/bbc54d5b3c5fcffd79602cff17ed34dde1f3eff6/src/sdtt/core/sampling/utils.py#L10
 def top_k_top_p_filtering(
-        logits,
-        top_k=0,
-        top_p=0.0,
-        filter_value=-float("Inf"),
-        dim=-1):
+    logits, top_k=0, top_p=0.0, filter_value=-float("Inf"), dim=-1
+):
     """Filter a distribution of logits using top-k/top-p (nucleus) filtering.
     Adapted from https://gist.github.com/thomwolf/1a5a29f6962089e871b94cbd09daf317
 
@@ -217,21 +222,18 @@ def top_k_top_p_filtering(
         logits[to_remove_mask] = filter_value
 
     if top_p > 0.0:
-        sorted_logits, sorted_indices = torch.sort(
-            logits, descending=True, dim=-1)
-        cum_probs = torch.cumsum(
-            torch.softmax(sorted_logits, dim=-1), dim=-1)
+        sorted_logits, sorted_indices = torch.sort(logits, descending=True, dim=-1)
+        cum_probs = torch.cumsum(torch.softmax(sorted_logits, dim=-1), dim=-1)
 
         sorted_indices_to_remove = cum_probs > top_p
         # Ensures at least one token is kept
-        sorted_indices_to_remove[..., 1:] = \
-            sorted_indices_to_remove[..., :-1].clone()
+        sorted_indices_to_remove[..., 1:] = sorted_indices_to_remove[..., :-1].clone()
         sorted_indices_to_remove[..., 0] = 0
 
         mask_to_remove = torch.empty_like(sorted_indices_to_remove)
-        mask_to_remove.scatter_(dim=-1,
-                                index=sorted_indices,
-                                src=sorted_indices_to_remove)
+        mask_to_remove.scatter_(
+            dim=-1, index=sorted_indices, src=sorted_indices_to_remove
+        )
         logits[mask_to_remove] = filter_value
 
     if dim != -1:
@@ -247,6 +249,7 @@ def _discrete_prob_map(gamma_t, N=10):
         cdf = norm.cdf(x, scale=1) ** (N - 1)
         pdf = norm.pdf(x, loc=snr_sqrt, scale=1)
         return pdf * cdf
+
     return value
 
 
@@ -258,115 +261,127 @@ def _discrete_prob_grad(gamma_t, N=10):
         cdf = norm.cdf(x, scale=1) ** (N - 1)
         pdf = norm.pdf(x, loc=snr_sqrt, scale=1)
         return coef * pdf * cdf
+
     return value
 
 
 def _cache_prob_usdm_in_partition(
-        vocab_size=30522, partition_index=0, num_partitions=1,
-        log10_num_points=5):
-    print(f'Caching partition:{partition_index} / {num_partitions}')
-    path = 'integral'
+    vocab_size=30522, partition_index=0, num_partitions=1, log10_num_points=5
+):
+    print(f"Caching partition:{partition_index} / {num_partitions}")
+    path = "integral"
     gamma_min = -5
     gamma_max = -1
-    num_points = 10 ** log10_num_points
+    num_points = 10**log10_num_points
     p_cache = []
     grad_p_cache = []
     start_time = time.time()
     gammas = np.linspace(gamma_min, gamma_max, num_points)
     n = num_points // num_partitions
-    for gamma in gammas[partition_index * n:
-                        (partition_index + 1) * n]:
-        pt, _ = quad(_discrete_prob_map(gamma, vocab_size),
-                     -np.inf, np.inf)
+    for gamma in gammas[partition_index * n : (partition_index + 1) * n]:
+        pt, _ = quad(_discrete_prob_map(gamma, vocab_size), -np.inf, np.inf)
         p_cache.append(pt)
-        grad_pt, _ = quad(_discrete_prob_grad(gamma, vocab_size),
-                          -np.inf, np.inf)
+        grad_pt, _ = quad(_discrete_prob_grad(gamma, vocab_size), -np.inf, np.inf)
         grad_p_cache.append(grad_pt)
         if len(p_cache) % 100 == 0:
-            print('{}% completed. Time elapsed:{:.2f} mins'.format(
-                int(100 * len(p_cache) / num_points),
-                (time.time() - start_time) / 60))
+            print(
+                "{}% completed. Time elapsed:{:.2f} mins".format(
+                    int(100 * len(p_cache) / num_points),
+                    (time.time() - start_time) / 60,
+                )
+            )
 
     filename = os.path.join(
-        path, '{}_{}_{}-{}.pkl'.format(
-            vocab_size, log10_num_points, partition_index,
-            num_partitions))
-    with open(filename, 'wb') as f:
-        pickle.dump({
-            'vocab_size': vocab_size,
-            'gamma_min': gamma_min,
-            'gamma_max': gamma_max,
-            'num_points': num_points,
-            'pt': np.asarray(p_cache),
-            'grad_pt': np.asarray(grad_p_cache)}, f)
+        path,
+        "{}_{}_{}-{}.pkl".format(
+            vocab_size, log10_num_points, partition_index, num_partitions
+        ),
+    )
+    with open(filename, "wb") as f:
+        pickle.dump(
+            {
+                "vocab_size": vocab_size,
+                "gamma_min": gamma_min,
+                "gamma_max": gamma_max,
+                "num_points": num_points,
+                "pt": np.asarray(p_cache),
+                "grad_pt": np.asarray(grad_p_cache),
+            },
+            f,
+        )
 
 
 def test_cache_prob_usdm_in_partition(
-        partition_index=0, num_partitions=1, vocab_size=30522,
-        log10_num_points=5):
-    path = 'integral/{}_{}_{}-{}.pkl'.format(
-        vocab_size, log10_num_points, partition_index,
-        num_partitions)
-    with open(path, 'rb') as f:
+    partition_index=0, num_partitions=1, vocab_size=30522, log10_num_points=5
+):
+    path = "integral/{}_{}_{}-{}.pkl".format(
+        vocab_size, log10_num_points, partition_index, num_partitions
+    )
+    with open(path, "rb") as f:
         data = pickle.load(f)
-    num_points = data['num_points']
+    num_points = data["num_points"]
 
     def _get_index(x):
-        return round((num_points - 1) * (x - data['gamma_min']) / (
-            data['gamma_max'] - data['gamma_min']))
+        return round(
+            (num_points - 1)
+            * (x - data["gamma_min"])
+            / (data["gamma_max"] - data["gamma_min"])
+        )
 
     pt_errors = []
     grad_pt_errors = []
-    gammas = np.linspace(data['gamma_min'],
-                         data['gamma_max'],
-                         num_points)
+    gammas = np.linspace(data["gamma_min"], data["gamma_max"], num_points)
     n = num_points // num_partitions
-    for gamma in gammas[partition_index * n:
-                        (partition_index + 1) * n]:
-        pt, _ = quad(
-            _discrete_prob_map(gamma, data['vocab_size']),
-            -np.inf, np.inf)
+    for gamma in gammas[partition_index * n : (partition_index + 1) * n]:
+        pt, _ = quad(_discrete_prob_map(gamma, data["vocab_size"]), -np.inf, np.inf)
         grad_pt, _ = quad(
-            _discrete_prob_grad(gamma, data['vocab_size']),
-            -np.inf, np.inf)
+            _discrete_prob_grad(gamma, data["vocab_size"]), -np.inf, np.inf
+        )
         idx = _get_index(gamma)
         print(idx)
-        pt_errors.append((pt - data['pt'][idx]) ** 2)
-        grad_pt_errors.append((grad_pt - data['grad_pt'][idx]) ** 2)
-    print('Integral MSE:{} Integral Squared:{:.4f}'.format(
-        np.mean(pt_errors), np.mean(data['pt'] ** 2)))
-    print('Integral Grad MSE:{} Integral Grad Squared:{:.4f}'.format(
-        np.mean(grad_pt_errors), np.mean(data['grad_pt'] ** 2)))
+        pt_errors.append((pt - data["pt"][idx]) ** 2)
+        grad_pt_errors.append((grad_pt - data["grad_pt"][idx]) ** 2)
+    print(
+        "Integral MSE:{} Integral Squared:{:.4f}".format(
+            np.mean(pt_errors), np.mean(data["pt"] ** 2)
+        )
+    )
+    print(
+        "Integral Grad MSE:{} Integral Grad Squared:{:.4f}".format(
+            np.mean(grad_pt_errors), np.mean(data["grad_pt"] ** 2)
+        )
+    )
 
 
 if __name__ == "__main__":
     # Usage: python utils.py --vocab_size=N
     parser = argparse.ArgumentParser(
-        description='Caches the integral appearing in the '
-        'Diffusion Transformation operator.')
+        description="Caches the integral appearing in the "
+        "Diffusion Transformation operator."
+    )
     parser.add_argument(
-        '--vocab_size',
+        "--vocab_size",
         type=int,
         default=50257,  # For the gpt2 tokenizer
-        help='Vocabulary size (default: 50257)')
+        help="Vocabulary size (default: 50257)",
+    )
     parser.add_argument(
-        '--partition_index',
-        type=int,
-        default=0,
-        help='Helps parallelize caching')
+        "--partition_index", type=int, default=0, help="Helps parallelize caching"
+    )
     parser.add_argument(
-        '--num_partitions',
-        type=int,
-        default=1,
-        help='Helps parallelize caching')
+        "--num_partitions", type=int, default=1, help="Helps parallelize caching"
+    )
     parser.add_argument(
-        '--log10_num_points',
+        "--log10_num_points",
         type=int,
         default=5,
-        help=('The integral is function that needs to be '
-              'evaluated for inputs with a range [-5, 1]. '
-              'This argument represents the logarithm base 10 '
-              'of number of bins of discretization.'))
+        help=(
+            "The integral is function that needs to be "
+            "evaluated for inputs with a range [-5, 1]. "
+            "This argument represents the logarithm base 10 "
+            "of number of bins of discretization."
+        ),
+    )
     args = parser.parse_args()
 
     # Computing the integral over [-5, 1] can be slow,
@@ -376,13 +391,16 @@ if __name__ == "__main__":
         partition_index=args.partition_index,
         num_partitions=args.num_partitions,
         vocab_size=args.vocab_size,
-        log10_num_points=args.log10_num_points)
+        log10_num_points=args.log10_num_points,
+    )
 
     test_cache_prob_usdm_in_partition(
         partition_index=args.partition_index,
         num_partitions=args.num_partitions,
         vocab_size=args.vocab_size,
-        log10_num_points=args.log10_num_points)
+        log10_num_points=args.log10_num_points,
+    )
+
 
 # ----------------------------
 # Utilities: standardized means
@@ -397,7 +415,7 @@ def standardized_means(alpha: float, tau: float, b: float, diffusion=False):
     """
     sigma = b * (1.0 - alpha)
     if diffusion:
-      sigma = sigma ** 0.5
+        sigma = sigma**0.5
     if sigma <= 0.0:
         sigma = 1e-12
     m_c = (alpha - tau) / sigma
@@ -405,12 +423,21 @@ def standardized_means(alpha: float, tau: float, b: float, diffusion=False):
     m_a = 0.0
     return m_c, m_u, m_a, sigma
 
+
 # ----------------------------
 # Core: GH with precomputed log Φ-shifts (≤ 6 calls)
 # ----------------------------
-def compute_qs_fast(alpha: float, tau: float, b: float, K: int, M: int, *,
-                    n_gh: int = 100, sigma_floor: float = 1e-12,
-                    diffusion=False) -> tuple[float, float, float]:
+def compute_qs_fast(
+    alpha: float,
+    tau: float,
+    b: float,
+    K: int,
+    M: int,
+    *,
+    n_gh: int = 100,
+    sigma_floor: float = 1e-12,
+    diffusion=False,
+) -> tuple[float, float, float]:
     """
     Returns (q_c, q_u, q_a) using log-stabilized Gauss–Hermite and
     only a constant number of log_ndtr calls per evaluation.
@@ -431,17 +458,17 @@ def compute_qs_fast(alpha: float, tau: float, b: float, K: int, M: int, *,
 
     # --- Precompute the LOG-CDFs for the few unique shifts we need ---
     # 0-shift (same-class competitors)
-    L0     = log_ndtr(z_nodes)                # log Φ(z)
+    L0 = log_ndtr(z_nodes)  # log Φ(z)
     # label vs absorbing / absorbing vs label
-    L_ca   = log_ndtr(z_nodes + m_c)          # log Φ(z + (m_c - 0))
-    L_ac   = log_ndtr(z_nodes - m_c)          # log Φ(z + (0   - m_c))
+    L_ca = log_ndtr(z_nodes + m_c)  # log Φ(z + (m_c - 0))
+    L_ac = log_ndtr(z_nodes - m_c)  # log Φ(z + (0   - m_c))
     # data vs absorbing / absorbing vs data
-    L_ua   = log_ndtr(z_nodes + m_u)          # log Φ(z + (m_u - 0))
-    L_au   = log_ndtr(z_nodes - m_u)          # log Φ(z + (0   - m_u))
+    L_ua = log_ndtr(z_nodes + m_u)  # log Φ(z + (m_u - 0))
+    L_au = log_ndtr(z_nodes - m_u)  # log Φ(z + (0   - m_u))
     # label vs data / data vs label
-    d_cu   = m_c - m_u
-    L_cu   = log_ndtr(z_nodes + d_cu)         # log Φ(z + (m_c - m_u))
-    L_uc   = log_ndtr(z_nodes - d_cu)         # log Φ(z + (m_u - m_c))
+    d_cu = m_c - m_u
+    L_cu = log_ndtr(z_nodes + d_cu)  # log Φ(z + (m_c - m_u))
+    L_uc = log_ndtr(z_nodes - d_cu)  # log Φ(z + (m_u - m_c))
 
     # --- Build node-wise log-products for each grouped case ---
     # Label winner: (K-1) non-label data + M absorbing competitors
@@ -477,7 +504,13 @@ def compute_qs_fast(alpha: float, tau: float, b: float, K: int, M: int, *,
 # ----------------------------
 # Core Exact Computation (Gamma -> Alpha)
 # ----------------------------
-def compute_alpha_exact(gamma: np.ndarray, K: int, n_gh: int = 100, sigma_floor: float = 1e-12, is_diffusion=False) -> np.ndarray:
+def compute_alpha_exact(
+    gamma: np.ndarray,
+    K: int,
+    n_gh: int = 100,
+    sigma_floor: float = 1e-12,
+    is_diffusion=False,
+) -> np.ndarray:
     """
     Computes q_c (Alpha) from Gamma using Gauss-Hermite integration.
     This is the ground-truth function mapping Gamma -> Alpha.
@@ -489,17 +522,17 @@ def compute_alpha_exact(gamma: np.ndarray, K: int, n_gh: int = 100, sigma_floor:
     if is_diffusion:
         sigma = np.sqrt(sigma)
     sigma = np.maximum(sigma, sigma_floor)
-    
+
     m_c = gamma / sigma
-    
+
     # 2. GH nodes/weights
     x, w = hermgauss(n_gh)
     w = w / np.sqrt(np.pi)
     z_nodes = np.sqrt(2.0) * x
 
     # 3. Broadcasting
-    m_c_expanded = m_c[:, None]   # (B, 1)
-    z_expanded = z_nodes[None, :] # (1, n_gh)
+    m_c_expanded = m_c[:, None]  # (B, 1)
+    z_expanded = z_nodes[None, :]  # (1, n_gh)
 
     # 4. Compute Log-CDFs
     # L_cu = log(Phi(z + m_c))
@@ -509,35 +542,44 @@ def compute_alpha_exact(gamma: np.ndarray, K: int, n_gh: int = 100, sigma_floor:
     # log_prod_c = (K - 1) * L_cu
     log_prod_c = (K - 1) * L_cu
     q_c = np.sum(w * np.exp(log_prod_c), axis=-1)
-    
-    # Debugged. should consider prob. from uniform noise.
-    alpha = K/(K-1.) * (q_c - 1./K)
 
-    alpha += (gamma-1) * 1e-10 # minor trick to ensure monotonicity
+    # Debugged. should consider prob. from uniform noise.
+    alpha = K / (K - 1.0) * (q_c - 1.0 / K)
+
+    alpha += (gamma - 1) * 1e-10  # minor trick to ensure monotonicity
 
     alpha = np.clip(alpha, 0.0, 1.0)
 
     return alpha
 
-def compute_alpha_exact_torch(gamma, K: int, x_np, w_np, sigma_floor: float = 1e-12, is_diffusion=False, device=None) -> torch.Tensor:
+
+def compute_alpha_exact_torch(
+    gamma,
+    K: int,
+    x_np,
+    w_np,
+    sigma_floor: float = 1e-12,
+    is_diffusion=False,
+    device=None,
+) -> torch.Tensor:
     """
     Computes q_c (Alpha) from Gamma using Gauss-Hermite integration (PyTorch version).
     """
-    
+
     dtype = gamma.dtype
-    device = gamma.device 
+    device = gamma.device
 
     sigma = 1.0 - gamma
     if is_diffusion:
         sigma = torch.sqrt(sigma)
-    
+
     sigma = torch.maximum(sigma, torch.tensor(sigma_floor, device=device, dtype=dtype))
-    
+
     m_c = gamma / sigma
-    
+
     x = torch.tensor(x_np, dtype=dtype, device=device)
     w = torch.tensor(w_np, dtype=dtype, device=device)
-    
+
     w = w / np.sqrt(np.pi)
     z_nodes = torch.sqrt(torch.tensor(2.0, dtype=dtype, device=device)) * x
 
@@ -547,9 +589,9 @@ def compute_alpha_exact_torch(gamma, K: int, x_np, w_np, sigma_floor: float = 1e
     L_cu = torch.special.log_ndtr(z_expanded + m_c_expanded)
 
     log_prod_c = (K - 1) * L_cu
-    
+
     q_c = torch.sum(w.unsqueeze(0) * torch.exp(log_prod_c), dim=-1)
-    
+
     alpha = (K / (K - 1.0)) * (q_c - (1.0 / K))
 
     alpha = alpha + (gamma - 1) * 1e-10
@@ -558,40 +600,46 @@ def compute_alpha_exact_torch(gamma, K: int, x_np, w_np, sigma_floor: float = 1e
 
     return alpha
 
+
 # ----------------------------
 # LUT / Spline Implementation
 # ----------------------------
 
-def build_luts(K: int, n_points: int = 10000, is_diffusion=False) -> tuple[CubicSpline, CubicSpline]:
+
+def build_luts(
+    K: int, n_points: int = 10000, is_diffusion=False
+) -> tuple[CubicSpline, CubicSpline]:
     """
     Builds two lookup tables (Splines):
     1. Alpha -> Gamma (Forward)
     2. Gamma -> Alpha (Inverse)
-    
+
     Reverted to Linear (Uniform) spacing.
-    Chebyshev nodes concentrate points at 0 and 1, but for large K, the curve 
-    is often sigmoid-like (flat at ends, steep in middle). 
+    Chebyshev nodes concentrate points at 0 and 1, but for large K, the curve
+    is often sigmoid-like (flat at ends, steep in middle).
     Uniform spacing captures the transition region better.
     """
     # 1. Create Alpha grid using Uniform Spacing
     # Simple linspace covers the whole range evenly.
-    gamma_vals = np.linspace(0.0, 1.0, n_points) # cont.
-    
+    gamma_vals = np.linspace(0.0, 1.0, n_points)  # cont.
+
     # 2. Compute corresponding Gamma grid (Exact)
-    alpha_vals = compute_alpha_exact(gamma_vals, K=K, is_diffusion=is_diffusion) # disc.
-    
+    alpha_vals = compute_alpha_exact(
+        gamma_vals, K=K, is_diffusion=is_diffusion
+    )  # disc.
+
     # 3. Build Forward Spline (Alpha -> Gamma)
     # Alpha is strictly increasing. Safe.
     lut_g2a = CubicSpline(gamma_vals, alpha_vals)
-    
+
     # 4. Build Inverse Spline (Gamma -> Alpha)
     # Gamma values must be strictly increasing to be 'x' in CubicSpline.
-    
+
     # Sort just in case (though usually monotonic)
     sorted_indices = np.argsort(alpha_vals)
     gamma_sorted = gamma_vals[sorted_indices]
     alpha_sorted = alpha_vals[sorted_indices]
-    
+
     # Remove duplicates in Gamma
     # Duplicates often happen at very low alpha (gamma ~ 1/K) or very high alpha (gamma ~ 1.0)
     unique_alpha, unique_indices = np.unique(alpha_sorted, return_index=True)
@@ -599,16 +647,20 @@ def build_luts(K: int, n_points: int = 10000, is_diffusion=False) -> tuple[Cubic
 
     # Create Spline
     lut_a2g = CubicSpline(unique_alpha, unique_gamma)
-    
+
     return lut_a2g, lut_g2a
 
-# Initialize LUTs globally (lazy loading or explicit init recommended in real apps, 
+
+# Initialize LUTs globally (lazy loading or explicit init recommended in real apps,
 # but running here for immediate use)
 # Using a default K=50000 as per previous context.
 
 # LUT_A2G, LUT_G2A = build_luts(K=50000)
 
-def alpha_to_gamma(alpha: Union[np.ndarray, torch.tensor], lut: CubicSpline) -> Union[np.ndarray, torch.tensor]:
+
+def alpha_to_gamma(
+    alpha: Union[np.ndarray, torch.tensor], lut: CubicSpline
+) -> Union[np.ndarray, torch.tensor]:
     """
     Maps Alpha -> Gamma using the LUT.
     """
@@ -619,7 +671,10 @@ def alpha_to_gamma(alpha: Union[np.ndarray, torch.tensor], lut: CubicSpline) -> 
     else:
         return np.clip(lut(alpha), 0.0, 1.0)
 
-def gamma_to_alpha(gamma: Union[np.ndarray, torch.tensor], lut: CubicSpline) -> Union[np.ndarray, torch.tensor]:
+
+def gamma_to_alpha(
+    gamma: Union[np.ndarray, torch.tensor], lut: CubicSpline
+) -> Union[np.ndarray, torch.tensor]:
     """
     Maps Gamma -> Alpha using the LUT.
     """
@@ -630,6 +685,3 @@ def gamma_to_alpha(gamma: Union[np.ndarray, torch.tensor], lut: CubicSpline) -> 
         return torch.from_numpy(alpha).to(gamma.device, dtype=dtype)
     else:
         return np.clip(lut(gamma), 0.0, 1.0)
-    
-    
-    
