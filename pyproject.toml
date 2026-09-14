@@ -22,15 +22,23 @@ dependencies = [
     "scipy==1.16.3",
     "timm==1.0.22",
     "tokenizers==0.22.1",
-    "torch>=2.3.0",
+    "torch==2.6.0",
     "torchmetrics==1.8.2",
     "tqdm==4.67.1",
     "transformers==4.57.3",
-    "triton==3.4.0",
+    "triton==3.2.0",
     "wandb==0.23.1",
 ]
 
 [dependency-groups]
 dev = [
     "ruff>=0.16.7",
+]
+
+[tool.uv]
+# Resolve for the cluster as well as this machine: every locked package must
+# have a wheel usable on glibc-2.17 Linux x86_64, so a `uv lock` run on a modern
+# workstation cannot silently pick wheels that fail to install on the grid.
+required-environments = [
+    "sys_platform == 'linux' and platform_machine == 'x86_64'",
 ]
