@@ -1,38 +1,28 @@
 #!/bin/bash
+# ---------------------------------------------------------------------------------------
 # Generic SGE wrapper for any training script in scripts/train/.
-#
-#   qsub scripts/train.sge.sh scripts/train/train_flm_lm1b.sh
-#   qsub scripts/train.sge.sh scripts/train/train_flm_lm1b.sh trainer.max_steps=1000
-#
-# Submit from the repo root: -cwd makes that the job's working directory and
-# where the .o log lands. Requires the project venv at .venv.
-#
-# GPU count comes from -pe gpu; trainer.devices resolves to
-# torch.cuda.device_count(), so the scheduler's allocation is picked up with no
-# override. Per-device batch and grad accumulation then derive from
-# loader.global_batch_size. Override on the command line -- qsub flags win over
-# the #$ directives below:
-#
-#   qsub -pe gpu 8 -l tmem=16G -l h_rt=240:00:00 -N flm-owt \
-#        scripts/train.sge.sh scripts/train/train_flm_owt.sh
-#
-# Defaults are 2 A100s; -pe gpu N and -l gpu_type=... override both.
-#
-# Set FLM_ROOT in your shell (or .bashrc) to project space; -V imports it.
-#
-# Long runs outlive h_rt. Train scripts pin a stable run directory and enable
+# Instructions:
+# 1. Submit from the repo root: -cwd makes that the job's working directory.
+# 2. Requires the project venv at .venv.
+# 3. Set FLM_ROOT in your shell (or .bashrc) to project space; -V imports it.
+# 4. run `mkdir -p logs` after cloning
+# Train scripts pin a stable run directory and enable
 # resume, so re-submitting the identical qsub continues from the last
 # checkpoint. -r y also lets GE restart the job itself after a node failure.
 #
-# qstat / qstat -f -j <job-ID> / qdel <job-ID> to monitor and cancel.
+# Usage:
+#   qsub scripts/train.sge.sh scripts/train/train_flm_lm1b.sh
+#   qsub -pe gpu 8 -l tmem=16G -l h_rt=240:00:00 -N flm-owt \
+#        scripts/train.sge.sh scripts/train/train_flm_owt.sh trainer.max_steps=1000
+#
+# Monitoring:
+#   qstat / qstat -f -j <job-ID> / qdel <job-ID> to monitor and cancel.
+# --------------------------------------------------------------------------------------
 #
 #$ -S /bin/bash
 #$ -N flm-train
 #$ -cwd
 #$ -j y
-# Scheduler logs land in logs/<job-name>.o<job-ID>, relative to the submit dir.
-# GE opens this file before the job starts and will NOT create the directory:
-# run `mkdir -p logs` once after cloning, or submits land in Eqw.
 #$ -o logs/
 #$ -V
 #$ -r y

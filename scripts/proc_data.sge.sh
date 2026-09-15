@@ -1,29 +1,21 @@
 #!/bin/bash
+# --------------------------------------------------------------------------------
 # Generic SGE wrapper for any dataset prep script in scripts/data/.
-#
+# Instructions:
+# 1. Submit from the repo root: -cwd makes that the job's working directory.
+# 2. Requires the project venv at .venv.
+# 3. Set FLM_ROOT in your shell (or .bashrc) to project space; -V imports it.
+# 4. run `mkdir -p logs` after cloning
+# Usage:
 #   qsub scripts/proc_data.sge.sh scripts/data/prepare_lm1b_memmap.sh
-#   qsub scripts/proc_data.sge.sh scripts/data/prepare_lm1b_memmap.sh --overwrite
-#
-# Submit from the repo root: -cwd makes that the job's working directory and
-# where the .o log lands. Requires the project venv at .venv.
-#
-# Prep is CPU-bound tokenization that parallelises almost linearly, so the job
-# asks for a big SMP slice; prep scripts pick up NSLOTS as their worker count.
-# Override per dataset on the command line rather than editing this file --
-# qsub flags win over the #$ directives:
-#
 #   qsub -pe smp 64 -l tmem=1.5G,h_vmem=1.5G -l h_rt=24:00:00 -N proc-owt \
 #        scripts/proc_data.sge.sh scripts/data/prepare_owt_memmap.sh
-#
 # If your site has dedicated CPU-only nodes, target them with -q (queue names
 # are site-specific; `qstat -g c` lists them):
-#
 #   qsub -q cpu.q scripts/proc_data.sge.sh scripts/data/prepare_lm1b_memmap.sh
+# Monitoring:
 # qstat / qstat -f -j <job-ID> / qdel <job-ID> to monitor and cancel.
-#
-# Keep this block free of blank lines: GE stops reading #$ directives at the
-# first line not starting with '#', and a dropped -l tmem leaves the job queued
-# forever with no error.
+# --------------------------------------------------------------------------------------
 #$ -S /bin/bash
 #$ -N proc-data
 #$ -cwd
