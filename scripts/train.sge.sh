@@ -65,6 +65,13 @@ echo "FLM_OUTPUT_DIR=$FLM_OUTPUT_DIR"
 source .venv/bin/activate
 python --version
 
+# flash-attn's rotary kernel JIT-compiles a Triton helper with $CC, and the
+# nodes' system gcc 4.8.5 has no stdatomic.h.
+if [ -x /share/apps/gcc-9.2.0/bin/gcc ]; then
+  export CC=/share/apps/gcc-9.2.0/bin/gcc
+  export LD_LIBRARY_PATH="/share/apps/gcc-9.2.0/lib64:${LD_LIBRARY_PATH:-}"
+fi
+
 # CUDA_VISIBLE_DEVICES is set by the scheduler; the site guide is explicit that
 # jobs must not modify it or pin device indices. Just report what we were given.
 nvidia-smi --query-gpu=index,name,memory.total --format=csv,noheader || true
