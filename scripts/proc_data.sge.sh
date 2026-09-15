@@ -71,6 +71,8 @@ python --version
 # One tokenizer process per reserved core. BLAS stays single-threaded so the
 # worker pool is the only source of parallelism.
 export OMP_NUM_THREADS=1
+export PYTHONUNBUFFERED=1
+
 echo "NSLOTS=${NSLOTS:-1}"
 
 echo "Running: $prep_script $*"

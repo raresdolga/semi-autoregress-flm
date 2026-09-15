@@ -161,11 +161,23 @@ class GradientInspectionCallback(lightning.Callback):
             pl_module.grad_step = 0
 
 
+def setup_logging(level=logging.INFO) -> None:
+    """Configures logging for entry points not managed by Hydra."""
+    logging.basicConfig(
+        level=level,
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+        datefmt="%H:%M:%S",
+    )
+
+
 def get_logger(name=__name__, level=logging.INFO) -> logging.Logger:
     """Initializes multi-GPU-friendly python logger."""
 
     logger = logging.getLogger(name)
     logger.setLevel(level)
+    if getattr(logger, "_rank_zero_wrapped", False):
+        return logger
+    logger._rank_zero_wrapped = True
 
     # this ensures all logging levels get marked with the rank zero decorator
     # otherwise logs would get multiplied for each GPU process in multi-GPU setup

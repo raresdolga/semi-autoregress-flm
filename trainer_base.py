@@ -94,6 +94,7 @@ class TrainerBase(L.LightningModule):
             )
 
         self._pending_ema_state = None
+        # T = 0 means continuous diffusion, T > 0 means discrete diffusion (1/T, 2/T, ..., 1)
         self.T = self.config.algo.T
         self.num_tokens = self.config.model.length
         self.softplus = torch.nn.Softplus()
@@ -258,7 +259,15 @@ class TrainerBase(L.LightningModule):
             "_batches_that_stepped"
         ] = checkpoint["loops"]["fit_loop"][
             "epoch_loop.automatic_optimization.optim_progress"
-        ]["optimizer"]["step"]["total"]["completed"]
+        ][
+            "optimizer"
+        ][
+            "step"
+        ][
+            "total"
+        ][
+            "completed"
+        ]
         if "sampler" not in checkpoint.keys():
             checkpoint["sampler"] = {}
         if hasattr(self.trainer.train_dataloader.sampler, "state_dict"):
@@ -597,7 +606,7 @@ class TrainerBase(L.LightningModule):
         given_t=None,
         not_sampling_t=False,
     ):
-        (input_tokens, output_tokens, valid_tokens) = self._process_model_input(
+        input_tokens, output_tokens, valid_tokens = self._process_model_input(
             x0, valid_tokens
         )
         loss = self.nll(
@@ -804,7 +813,7 @@ class Diffusion(TrainerBase):
         # Lightning auto-casting is not working in this method for some reason
         # TODO(subham): Test this method after refactoring.
         self._eval_mode()
-        (sampling_steps, samples, sequence_lengths) = self._semi_ar_sampler(
+        sampling_steps, samples, sequence_lengths = self._semi_ar_sampler(
             n_samples=self.config.loader.eval_batch_size,
             stride_length=stride_length,
             num_strides=num_strides,

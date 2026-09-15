@@ -503,6 +503,7 @@ def load_raw_split(
             streaming=streaming,
             trust_remote_code=True,
             revision=revision,
+            **({} if streaming else {"num_proc": num_proc}),
         )
 
     if dataset_name in _PRELOADED_SPLIT:

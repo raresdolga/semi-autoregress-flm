@@ -343,7 +343,7 @@ class Metrics:
             eval_model = eval_model.to(device)
             # Re-tokenize using eval model's tokenizer
             if retokenize:
-                (samples, attn_mask, eval_context_size) = self._eval_retokenize(
+                samples, attn_mask, eval_context_size = self._eval_retokenize(
                     text_samples, max_length=max_length, device=device
                 )
             else:
@@ -390,10 +390,7 @@ class Metrics:
             if tokenizer_llama.pad_token is None:
                 tokenizer_llama.pad_token = tokenizer_llama.eos_token
                 tokenizer_llama.pad_token_id = tokenizer_llama.eos_token_id
-            tokenizer_gpt = transformers.AutoTokenizer.from_pretrained("gpt2")
-            if tokenizer_gpt.pad_token is None:
-                tokenizer_gpt.pad_token = tokenizer_gpt.eos_token
-                tokenizer_gpt.pad_token_id = tokenizer_gpt.eos_token_id
+
             num_samples = len(text_samples)
             batch_size = min(16, num_samples)
             num_batches = num_samples // batch_size

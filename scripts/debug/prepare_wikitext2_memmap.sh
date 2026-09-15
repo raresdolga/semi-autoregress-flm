@@ -28,7 +28,7 @@ for arg in "$@"; do
   fi
 done
 
-python -m datamodules.backend_memmap \
+python -u -m datamodules.backend_memmap \
   --dataset wikitext2 \
   --splits train,validation \
   --tokenizer gpt2 \
@@ -42,7 +42,7 @@ if [ "$verify" -eq 1 ]; then
   # is byte-identical for any --num-proc, and that the memmap is fork/pickle
   # safe. The determinism check re-tokenizes the split, so this is not cheap --
   # which is why it is opt-in rather than part of every prepare.
-  python -m tests.verify_memmap \
+  python -u -m tests.verify_memmap \
     --dataset wikitext2 \
     --split train \
     --tokenizer gpt2 \

@@ -15,6 +15,7 @@ one prepared split serves every window size.
 import argparse
 import mmap
 import os
+import time
 from itertools import chain
 
 import datasets  # HuggingFace
@@ -22,8 +23,11 @@ import numpy as np
 import torch
 
 import datamodules.datasets  # this package's dataset dispatch, not the library
+import utils
 from . import paths
 from .tokenization import build_tokenizer, detokenizer_for
+
+LOGGER = utils.get_logger(__name__)
 
 # ---------------------------------------------------------------------------
 # Runtime Dataset
@@ -182,9 +186,11 @@ def process_dataset(
     """
     tokens_file = paths.memmap_tokens_path(out_dir, dataset_name, tokenizer_name, split)
     if os.path.exists(tokens_file) and not overwrite:
-        print(f"[skip] {tokens_file} already prepared (--overwrite to redo)")
+        LOGGER.info("[skip] %s already prepared (--overwrite to redo)", tokens_file)
         return tokens_file
 
+    tag = f"{dataset_name}/{split}"
+    start = time.perf_counter()
     num_proc = num_proc or len(os.sched_getaffinity(0))
     tokenizer = build_tokenizer(tokenizer_name)
     # uint16 up to 65535 ids (gpt2 needs 50258); a 128k-vocab tokenizer would
@@ -194,6 +200,7 @@ def process_dataset(
     else:
         np_dtype = np.uint32
 
+    LOGGER.info("[%s] loading corpus from %s", tag, hf_cache_dir)
     raw, is_ready = datamodules.datasets.load_raw_split(
         dataset_name,
         split,
@@ -213,12 +220,14 @@ def process_dataset(
     detokenize = detokenizer_for(dataset_name)
     eos_token = tokenizer.eos_token
 
-    print(
-        f"[{dataset_name}/{split}] {len(raw)} docs -> {tokens_file}\n"
-        f"  tokenizer={tokenizer_name} vocab={len(tokenizer)} "
-        f"dtype={np.dtype(np_dtype).name}"
-        f" eos={eos_token!r}"
-        f" num_proc={num_proc}"
+    LOGGER.info(
+        "[%s] loaded %d docs in %.0fs -> %s",
+        tag, len(raw), time.perf_counter() - start, tokens_file,
+    )
+    LOGGER.info(
+        "[%s] tokenizer=%s vocab=%d dtype=%s eos=%r num_proc=%d",
+        tag, tokenizer_name, len(tokenizer), np.dtype(np_dtype).name, eos_token,
+        num_proc,
     )
 
     def mark(text):
@@ -242,6 +251,8 @@ def process_dataset(
         # A list, because this is a batched map returning one row.
         return {"input_ids": [ids], "len": [len(ids)]}
 
+    LOGGER.info("[%s] tokenizing with %d processes", tag, num_proc)
+    phase = time.perf_counter()
     tokenized = raw.map(
         tokenize_concat,
         batched=True,
@@ -252,6 +263,10 @@ def process_dataset(
 
     tokenized = tokenized.add_column("len_offset", np.cumsum(tokenized["len"]))
     num_tokens = int(tokenized[-1]["len_offset"])
+    LOGGER.info(
+        "[%s] tokenized %d tokens in %.0fs; writing %s",
+        tag, num_tokens, time.perf_counter() - phase, tokens_file,
+    )
 
     os.makedirs(os.path.dirname(tokens_file), exist_ok=True)
     tmp_path = tokens_file + ".tmp"
@@ -269,7 +284,10 @@ def process_dataset(
     # what marks it ready. Nothing else is written.
     os.replace(tmp_path, tokens_file)
 
-    print(f"  wrote {num_tokens} tokens ({os.path.getsize(tokens_file)} bytes)")
+    LOGGER.info(
+        "[%s] wrote %d tokens (%d bytes); split done in %.0fs",
+        tag, num_tokens, os.path.getsize(tokens_file), time.perf_counter() - start,
+    )
     return tokens_file
 
 
@@ -313,6 +331,7 @@ def main(argv=None):
     )
     p.add_argument("--overwrite", action="store_true")
     args = p.parse_args(argv)
+    utils.setup_logging()
 
     # Set here, not at module scope: this module is imported by every
     # training run, and disabling tokenizer threads globally would also slow

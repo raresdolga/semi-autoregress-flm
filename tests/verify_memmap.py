@@ -26,11 +26,13 @@ import numpy as np
 import torch
 
 import datamodules.datasets
+import utils
 from datamodules import backend_memmap, paths
 from datamodules.backend_memmap import process_dataset
 from datamodules.tokenization import build_tokenizer, detokenizer_for
 
-PASS, FAIL = "  [ok]  ", "  [FAIL]"
+LOGGER = utils.get_logger(__name__)
+PASS, FAIL = "[ok]  ", "[FAIL]"
 _failures = []
 
 
@@ -44,8 +46,11 @@ def sha256(path):
 
 
 def check(name, ok, detail=""):
-    print(f"{PASS if ok else FAIL} {name}{' - ' + detail if detail else ''}")
-    if not ok:
+    suffix = f" - {detail}" if detail else ""
+    if ok:
+        LOGGER.info("%s %s%s", PASS, name, suffix)
+    else:
+        LOGGER.error("%s %s%s", FAIL, name, suffix)
         _failures.append(name)
     return ok
 
@@ -102,6 +107,7 @@ def main(argv=None):
         help="skip the num_proc=1 re-prep (the slow check)",
     )
     args = p.parse_args(argv)
+    utils.setup_logging()
 
     datasets.disable_progress_bars()
     hf_cache = args.hf_cache_dir or os.path.join(args.out_dir, "hf-cache")
@@ -118,10 +124,10 @@ def main(argv=None):
     np_dtype = np.uint16 if len(tokenizer) <= np.iinfo(np.uint16).max else np.uint32
     num_tokens = os.path.getsize(tokens_file) // np.dtype(np_dtype).itemsize
 
-    print(f"\n{args.dataset}/{args.split} -> {tokens_file}")
-    print(
-        f"  {num_tokens} tokens, dtype={np.dtype(np_dtype).name} "
-        f"({os.path.getsize(tokens_file)} bytes)"
+    LOGGER.info("%s/%s -> %s", args.dataset, args.split, tokens_file)
+    LOGGER.info(
+        "%d tokens, dtype=%s (%d bytes)",
+        num_tokens, np.dtype(np_dtype).name, os.path.getsize(tokens_file),
     )
 
     actual = np.memmap(tokens_file, dtype=np_dtype, mode="r")
@@ -160,9 +166,9 @@ def main(argv=None):
     ds = backend_memmap.MemmapTokenDataset(
         tokens_file, window_size=args.window_size, num_tokens=num_tokens, dtype=np_dtype
     )
-    print(
-        f"  {len(ds)} rows of {args.window_size}, "
-        f"{num_tokens % args.window_size} tokens dropped"
+    LOGGER.info(
+        "%d rows of %d, %d tokens dropped",
+        len(ds), args.window_size, num_tokens % args.window_size,
     )
 
     # 4. The memmap handle is never pickled (an 18 GB OWT stream would OOM
@@ -229,19 +235,22 @@ def main(argv=None):
 
     # 8. Read cost, for the record.
     n = 2000
-    start = time.time()
+    start = time.perf_counter()
     for i in range(n):
         _ = ds[i % len(ds)]
-    print(
-        f"\n  read cost: {(time.time() - start) / n * 1e6:.1f} us/item "
-        f'(Arrow + with_format("torch") measured 172 us/item)'
+    LOGGER.info(
+        'read cost: %.1f us/item (Arrow + with_format("torch") measured 172 us/item)',
+        (time.perf_counter() - start) / n * 1e6,
     )
-    print(f"  {os.path.basename(tokens_file)}: {os.path.getsize(tokens_file)} bytes")
+    LOGGER.info(
+        "%s: %d bytes", os.path.basename(tokens_file), os.path.getsize(tokens_file)
+    )
 
-    print(
-        f"\n{'FAILED: ' + ', '.join(_failures) if _failures else 'all checks passed'}"
-    )
-    return 1 if _failures else 0
+    if _failures:
+        LOGGER.error("FAILED: %s", ", ".join(_failures))
+        return 1
+    LOGGER.info("all checks passed")
+    return 0
 
 
 if __name__ == "__main__":
