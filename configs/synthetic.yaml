@@ -1,0 +1,24 @@
+# Synthetic Markov-chain experiment (flm/synthetic/main.py).
+# Run: scripts/debug/train_synthetic.sh mc.K=64 mc.b=2 mc.D=8
+# The output dir needs FLM_OUTPUT_DIR (set by scripts/env.sh); runs fail fast without it.
+
+seed: 1
+
+mc:
+  K: 4          # vocabulary size
+  D: 2          # sequence length (2 = copy task when b=1, offsets=[0])
+  b: 1          # branching factor, 1 <= b <= K
+  offsets: [0]  # set S of b distinct offsets in [0, K); null = random from mc.seed
+  seed: 0       # seed for drawing the offsets when offsets is null
+
+data:
+  n_train: 100000
+  n_test: 10000
+  train_seed: 0
+  test_seed: 1
+
+hydra:
+  run:
+    dir: ${oc.env:FLM_OUTPUT_DIR}/synthetic/K${mc.K}_D${mc.D}_b${mc.b}/${now:%Y.%m.%d}/${now:%H%M%S}
+  job:
+    chdir: true
