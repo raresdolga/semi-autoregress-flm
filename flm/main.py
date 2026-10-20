@@ -14,10 +14,10 @@ import torch
 torch.load = functools.partial(torch.load, weights_only=False)
 from torch.distributed import init_process_group, destroy_process_group
 import wandb
-import algo
-import utils
-from datamodules.dataloaders import get_dataloaders, get_pseudo_dataloader
-from datamodules.tokenization import get_tokenizer
+from flm import algo
+from flm import utils
+from flm.datamodules.dataloaders import get_dataloaders, get_pseudo_dataloader
+from flm.datamodules.tokenization import get_tokenizer
 
 import numpy as np
 from datetime import datetime
@@ -438,7 +438,7 @@ def _train(diffusion_model, config, logger, tokenizer):
     trainer.fit(model, train_ds, valid_ds, ckpt_path=ckpt_path)
 
 
-@hydra.main(version_base=None, config_path="configs", config_name="config")
+@hydra.main(version_base=None, config_path="../configs", config_name="config")
 def main(config):
     """Main entry point for training."""
     L.seed_everything(config.seed)

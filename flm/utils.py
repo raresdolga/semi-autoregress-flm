@@ -366,7 +366,7 @@ def test_cache_prob_usdm_in_partition(
 
 
 if __name__ == "__main__":
-    # Usage: python utils.py --vocab_size=N
+    # Usage: python -m flm.utils --vocab_size=N
     parser = argparse.ArgumentParser(
         description="Caches the integral appearing in the "
         "Diffusion Transformation operator."

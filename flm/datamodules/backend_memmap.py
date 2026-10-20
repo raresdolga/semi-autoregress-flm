@@ -22,8 +22,8 @@ import datasets  # HuggingFace
 import numpy as np
 import torch
 
-import datamodules.datasets  # this package's dataset dispatch, not the library
-import utils
+from flm import utils
+from . import datasets as flmdatasets  # this package's dispatch, not the HF library
 from . import paths
 from .tokenization import build_tokenizer, detokenizer_for
 
@@ -124,7 +124,7 @@ def get_dataset(
         raise RuntimeError(
             f"No prepared memmap data at {path}\n"
             "Prepare it offline first, e.g.:\n"
-            "  python -m datamodules.backend_memmap --dataset <name> "
+            "  python -m flm.datamodules.backend_memmap --dataset <name> "
             "--splits train,validation --tokenizer <tok> "
             '--out-dir "$FLM_DATA_DIR/memmap"'
         )
@@ -201,7 +201,7 @@ def process_dataset(
         np_dtype = np.uint32
 
     LOGGER.info("[%s] loading corpus from %s", tag, hf_cache_dir)
-    raw, is_ready = datamodules.datasets.load_raw_split(
+    raw, is_ready = flmdatasets.load_raw_split(
         dataset_name,
         split,
         hf_cache_dir,
@@ -216,7 +216,7 @@ def process_dataset(
     if limit_docs is not None:
         raw = raw.select(range(min(limit_docs, len(raw))))
 
-    text_column = datamodules.datasets.text_column(dataset_name)
+    text_column = flmdatasets.text_column(dataset_name)
     detokenize = detokenizer_for(dataset_name)
     eos_token = tokenizer.eos_token
 

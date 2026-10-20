@@ -25,11 +25,11 @@ import datasets  # HuggingFace
 import numpy as np
 import torch
 
-import datamodules.datasets
-import utils
-from datamodules import backend_memmap, paths
-from datamodules.backend_memmap import process_dataset
-from datamodules.tokenization import build_tokenizer, detokenizer_for
+from flm import utils
+from flm.datamodules import backend_memmap, paths
+from flm.datamodules import datasets as flmdatasets  # not the HF library above
+from flm.datamodules.backend_memmap import process_dataset
+from flm.datamodules.tokenization import build_tokenizer, detokenizer_for
 
 LOGGER = utils.get_logger(__name__)
 PASS, FAIL = "[ok]  ", "[FAIL]"
@@ -65,12 +65,12 @@ def reference_stream(
 ):
     """Tokenize the split in one process, no sharding, as ground truth."""
     tokenizer = build_tokenizer(tokenizer_name)
-    raw, _ = datamodules.datasets.load_raw_split(
+    raw, _ = flmdatasets.load_raw_split(
         dataset_name, split, hf_cache_dir, num_proc=1, streaming=False
     )
     if limit_docs is not None:
         raw = raw.select(range(min(limit_docs, len(raw))))
-    column = datamodules.datasets.text_column(dataset_name)
+    column = flmdatasets.text_column(dataset_name)
     detok = detokenizer_for(dataset_name)
     eos = tokenizer.eos_token
 

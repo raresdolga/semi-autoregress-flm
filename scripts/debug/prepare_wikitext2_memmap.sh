@@ -28,7 +28,7 @@ for arg in "$@"; do
   fi
 done
 
-python -u -m datamodules.backend_memmap \
+python -u -m flm.datamodules.backend_memmap \
   --dataset wikitext2 \
   --splits train,validation \
   --tokenizer gpt2 \

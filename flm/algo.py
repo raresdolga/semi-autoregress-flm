@@ -8,12 +8,12 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 import wandb
-import trainer_base
-import utils
+from flm import trainer_base
+from flm import utils
 import math
-import models
+from flm import models
 from torch.func import functional_call
-from models.dit import modulate_fused
+from flm.models.dit import modulate_fused
 import functools
 from entmax import entmax_bisect
 
@@ -585,7 +585,7 @@ class Distillation(DUO):
             f"the {self.config.data.tokenizer_name_or_path} "
             " tokenizer doesnt exist at "
             f"{self.config.algo.integral_cache_path}. "
-            "Please generate it by running the utils.py script, "
+            "Please generate it by running `python -m flm.utils`, "
             "and ensure the correct path is specified using the "
             "algo.integral_cache_path flag."
         )

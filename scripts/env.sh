@@ -15,6 +15,9 @@ export TORCHINDUCTOR_CACHE_DIR="${TORCHINDUCTOR_CACHE_DIR:-$HOME/.cache/inductor
 export TMPDIR="${TMPDIR:-$FLM_ROOT/tmp}"
 export HF_HOME="${HF_HOME:-$FLM_ROOT/cache/huggingface}"
 export WANDB_CACHE_DIR="${WANDB_CACHE_DIR:-$FLM_ROOT/cache/wandb}"
+# wandb appends "wandb/" itself, so run files land in $FLM_ROOT/wandb, next to outputs/.
+# Without this they follow hydra's chdir into each run dir (or the cwd).
+export WANDB_DIR="${WANDB_DIR:-$FLM_ROOT}"
 
 mkdir -p "$FLM_DATA_DIR" "$FLM_OUTPUT_DIR" "$UV_CACHE_DIR" "$TMPDIR" \
          "$HF_HOME" "$TRITON_CACHE_DIR" "$TORCHINDUCTOR_CACHE_DIR" "$WANDB_CACHE_DIR"

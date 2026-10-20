@@ -15,14 +15,14 @@ set -euo pipefail
 
 source "$(dirname "$0")/../env.sh"
 
-# torch.compile is decided at *import* time: models/dit.py reads DIT_USE_COMPILE
+# torch.compile is decided at *import* time: flm/models/dit.py reads DIT_USE_COMPILE
 # and decorates DIT.forward when the module loads, which happens at `import algo`
-# in main.py -- long before @hydra.main parses the config. So it cannot be a
+# in flm/main.py -- long before @hydra.main parses the config. So it cannot be a
 # Hydra override; it has to be in the environment before python starts.
 #   DIT_USE_COMPILE=1 scripts/local/train_flm_memmap.sh
 export DIT_USE_COMPILE="${DIT_USE_COMPILE:-0}"
 
-python -u -m main \
+python -u -m flm.main \
   '~wandb' \
   hydra.run.dir="$FLM_OUTPUT_DIR"'/${data.train}/${algo.name}-memmap/${now:%Y.%m.%d}/${now:%H%M%S}' \
   data=wikitext2-memmap \

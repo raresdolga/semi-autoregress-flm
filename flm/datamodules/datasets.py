@@ -15,8 +15,9 @@ which is what keeps the layering acyclic: `dataloaders` -> `*_backend` -> here.
 
 Note the module name: it sits beside the HuggingFace `datasets` library, which
 it imports. A bare `import datasets` anywhere in the package is absolute and
-resolves to HuggingFace; refer to *this* module as `datamodules.datasets`, never
-as `from . import datasets`, or the library gets shadowed.
+resolves to HuggingFace; import *this* module aliased, as `from . import datasets
+as flmdatasets`, never as a bare `from . import datasets`, or the library gets
+shadowed.
 """
 
 import json
@@ -32,7 +33,7 @@ import requests
 import torch
 from einops import repeat
 
-import utils
+from flm import utils
 
 LOGGER = utils.get_logger(__name__)
 

@@ -32,7 +32,7 @@ done
 # count so this stays runnable outside the scheduler.
 num_proc="${NSLOTS:-$(nproc)}"
 
-python -u -m datamodules.backend_memmap \
+python -u -m flm.datamodules.backend_memmap \
   --dataset lm1b \
   --splits train,test \
   --tokenizer bert-base-uncased \

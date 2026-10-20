@@ -1,6 +1,6 @@
 #!/bin/bash
 # Local FLM training on a single GPU: tiny model, wikitext2, no wandb.
-# '~wandb' drops the wandb config group so main.py logs to stdout only.
+# '~wandb' drops the wandb config group so flm/main.py logs to stdout only.
 # Each run gets its own dir under $FLM_OUTPUT_DIR with config + checkpoints inside.
 #
 # For the flat-uint16 backend see scripts/local/train_flm_memmap.sh.
@@ -16,14 +16,14 @@
 
 source "$(dirname "$0")/../env.sh"
 
-# torch.compile is decided at *import* time: models/dit.py reads DIT_USE_COMPILE
+# torch.compile is decided at *import* time: flm/models/dit.py reads DIT_USE_COMPILE
 # and decorates DIT.forward when the module loads, which happens at `import algo`
-# in main.py -- long before @hydra.main parses the config. So it cannot be a
+# in flm/main.py -- long before @hydra.main parses the config. So it cannot be a
 # Hydra override; it has to be in the environment before python starts.
 #   DIT_USE_COMPILE=1 scripts/local/train_flm.sh
 export DIT_USE_COMPILE="${DIT_USE_COMPILE:-0}"
 
-python -u -m main \
+python -u -m flm.main \
   '~wandb' \
   hydra.run.dir="$FLM_OUTPUT_DIR"'/${data.train}/${algo.name}/${now:%Y.%m.%d}/${now:%H%M%S}' \
   data=wikitext2 \

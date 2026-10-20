@@ -7,6 +7,9 @@ __pycache__/
 # Hydra outputs
 outputs/
 
+# wandb run staging (scripts/env.sh points WANDB_DIR at $FLM_ROOT)
+wandb/
+
 # Symlink to $FLM_ROOT (datasets + run outputs on the data disk)
 /data
 
@@ -14,7 +17,7 @@ outputs/
 samples/
 tex/
 CLAUDE.md
-# Precomputed integrals (regenerate via: python utils.py)
+# Precomputed integrals (regenerate via: python -m flm.utils)
 integral/
 
 # Sweep results

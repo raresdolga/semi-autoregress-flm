@@ -16,13 +16,13 @@ import transformers
 import wandb
 from torch.cuda.amp import autocast
 import torch.distributed as dist
-import metrics
-import models
-from datamodules.dataloaders import (
+from flm import metrics
+from flm import models
+from flm.datamodules.dataloaders import (
     FaultTolerantDistributedSampler,
     RandomFaultTolerantSampler,
 )
-import utils
+from flm import utils
 from omegaconf import ListConfig
 
 
@@ -207,8 +207,6 @@ class TrainerBase(L.LightningModule):
 
             if not ema_loaded:
                 print("Initializing EMA from loaded model weights")
-                import models.ema
-
                 self.ema = models.ema.ExponentialMovingAverage(
                     list(self._get_parameters()), decay=self.config.training.ema
                 )
@@ -827,7 +825,7 @@ class AbsorbingState(Diffusion):
     def __init__(self, config, tokenizer):
         # NOTE: Ideally, we should do
         # vocab_size = len(tokenizer), so that we account
-        # for the special tokens added in datamodules/backend_arrow.py.
+        # for the special tokens added in flm/datamodules/backend_arrow.py.
         # But we use tokenizer.vocab_size so as to to be
         # consistent with the prior checkpoints.
         vocab_size = tokenizer.vocab_size

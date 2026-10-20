@@ -3,9 +3,9 @@
 Import from the submodule that owns what you need -- this package deliberately
 re-exports nothing:
 
-    from datamodules.tokenization import get_tokenizer
-    from datamodules.dataloaders import get_dataloaders, get_pseudo_dataloader
-    from datamodules.dataloaders import RandomFaultTolerantSampler
+    from flm.datamodules.tokenization import get_tokenizer
+    from flm.datamodules.dataloaders import get_dataloaders, get_pseudo_dataloader
+    from flm.datamodules.dataloaders import RandomFaultTolerantSampler
 
 
 Two token backends, selected per data config by `data.backend`:
@@ -15,15 +15,17 @@ Two token backends, selected per data config by `data.backend`:
     memmap           -- flat uint16 stream + np.memmap, nanoGPT/flash-attn style.
                         ~4x smaller, ~16x cheaper per item, model-length
                         agnostic. Requires an offline
-                        `python -m datamodules.backend_memmap` run.
+                        `python -m flm.datamodules.backend_memmap` run.
 
 Modules, in dependency order (acyclic): paths (cache naming) and tokenization
 (detokenizers + tokenizers) -> datasets (corpora + split dispatch) ->
 backend_arrow / backend_memmap (token storage) -> dataloaders (samplers +
 DataLoaders). The memmap backend doubles as the offline prep CLI.
 
-Naming note: `datamodules/datasets.py` shares a name with the HuggingFace
-`datasets` library. A bare `import datasets` is absolute and resolves to the
-library; modules needing both import ours as `datamodules.datasets`. Never write
-`from . import datasets` in a module that also uses the library.
+Naming note: `datasets.py` here shares a name with the HuggingFace `datasets`
+library. A bare `import datasets` is absolute and resolves to the library;
+modules needing both import ours aliased, `from . import datasets as
+flmdatasets`. Never write a bare `from . import datasets` in a module that also
+uses the library -- it rebinds the name and the library import silently wins or
+loses depending on order.
 """

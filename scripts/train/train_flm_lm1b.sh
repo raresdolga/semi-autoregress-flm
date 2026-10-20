@@ -14,7 +14,7 @@ set -euo pipefail
 
 source "$(dirname "$0")/../env.sh"
 
-# torch.compile is decided at *import* time: models/dit.py
+# torch.compile is decided at *import* time: flm/models/dit.py
 export DIT_USE_COMPILE="${DIT_USE_COMPILE:-0}"
 
 RUN_NAME="${FLM_RUN_NAME:-flm_lm1b_repro}"
@@ -23,7 +23,7 @@ RUN_DIR="$FLM_OUTPUT_DIR/lm1b/$RUN_NAME"
 # Per-device batch.
 BS="${FLM_BS:-128}"
 
-python -u -m main \
+python -u -m flm.main \
   hydra.run.dir="$RUN_DIR" \
   data=lm1b-memmap \
   algo=flm \

@@ -19,8 +19,8 @@ import os
 import datasets  # HuggingFace
 import torch
 
-import datamodules.datasets  # this package's dataset dispatch, not the library
-import utils
+from flm import utils
+from . import datasets as flmdatasets  # this package's dispatch, not the HF library
 from . import paths
 from .tokenization import detokenizer_for
 
@@ -86,7 +86,7 @@ def get_dataset(
         # double block size for sub-sampling
         block_size *= 2
 
-    data, is_ready = datamodules.datasets.load_raw_split(
+    data, is_ready = flmdatasets.load_raw_split(
         dataset_name,
         mode,
         cache_dir,
@@ -100,9 +100,9 @@ def get_dataset(
     if is_ready:
         return data
 
-    bos, eos = datamodules.datasets.bos_eos_ids(tokenizer)
+    bos, eos = flmdatasets.bos_eos_ids(tokenizer)
     detokenizer = detokenizer_for(dataset_name)
-    text_col = datamodules.datasets.text_column(dataset_name)
+    text_col = flmdatasets.text_column(dataset_name)
 
     def _apply_detokenizer(detokenizer):
         def detok(text):
@@ -154,7 +154,7 @@ def get_dataset(
             desc="Tokenizing",
         )
     tokenized_dataset = tokenized_dataset.remove_columns(
-        datamodules.datasets.columns_to_drop(dataset_name)
+        flmdatasets.columns_to_drop(dataset_name)
     )
 
     if not wrap:
