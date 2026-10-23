@@ -127,7 +127,9 @@ def main(argv=None):
     LOGGER.info("%s/%s -> %s", args.dataset, args.split, tokens_file)
     LOGGER.info(
         "%d tokens, dtype=%s (%d bytes)",
-        num_tokens, np.dtype(np_dtype).name, os.path.getsize(tokens_file),
+        num_tokens,
+        np.dtype(np_dtype).name,
+        os.path.getsize(tokens_file),
     )
 
     actual = np.memmap(tokens_file, dtype=np_dtype, mode="r")
@@ -168,7 +170,9 @@ def main(argv=None):
     )
     LOGGER.info(
         "%d rows of %d, %d tokens dropped",
-        len(ds), args.window_size, num_tokens % args.window_size,
+        len(ds),
+        args.window_size,
+        num_tokens % args.window_size,
     )
 
     # 4. The memmap handle is never pickled (an 18 GB OWT stream would OOM

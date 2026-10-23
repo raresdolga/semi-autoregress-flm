@@ -14,7 +14,6 @@ concatenates each split once and is `num_proc`-independent.
 
 import functools
 import itertools
-import os
 
 import datasets  # HuggingFace
 import torch

@@ -1,21 +1,15 @@
 import itertools
 import os
-import random
-import inspect
 
 from dataclasses import dataclass
 
 
-from tqdm import tqdm
 import hydra.utils
 import lightning as L
 import numpy as np
 import torch
 import torch.nn.functional as F
 import transformers
-import wandb
-from torch.cuda.amp import autocast
-import torch.distributed as dist
 from flm import metrics
 from flm import models
 from flm.datamodules.dataloaders import (
@@ -257,15 +251,7 @@ class TrainerBase(L.LightningModule):
             "_batches_that_stepped"
         ] = checkpoint["loops"]["fit_loop"][
             "epoch_loop.automatic_optimization.optim_progress"
-        ][
-            "optimizer"
-        ][
-            "step"
-        ][
-            "total"
-        ][
-            "completed"
-        ]
+        ]["optimizer"]["step"]["total"]["completed"]
         if "sampler" not in checkpoint.keys():
             checkpoint["sampler"] = {}
         if hasattr(self.trainer.train_dataloader.sampler, "state_dict"):

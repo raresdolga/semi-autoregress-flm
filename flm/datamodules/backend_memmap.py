@@ -222,11 +222,18 @@ def process_dataset(
 
     LOGGER.info(
         "[%s] loaded %d docs in %.0fs -> %s",
-        tag, len(raw), time.perf_counter() - start, tokens_file,
+        tag,
+        len(raw),
+        time.perf_counter() - start,
+        tokens_file,
     )
     LOGGER.info(
         "[%s] tokenizer=%s vocab=%d dtype=%s eos=%r num_proc=%d",
-        tag, tokenizer_name, len(tokenizer), np.dtype(np_dtype).name, eos_token,
+        tag,
+        tokenizer_name,
+        len(tokenizer),
+        np.dtype(np_dtype).name,
+        eos_token,
         num_proc,
     )
 
@@ -265,7 +272,10 @@ def process_dataset(
     num_tokens = int(tokenized[-1]["len_offset"])
     LOGGER.info(
         "[%s] tokenized %d tokens in %.0fs; writing %s",
-        tag, num_tokens, time.perf_counter() - phase, tokens_file,
+        tag,
+        num_tokens,
+        time.perf_counter() - phase,
+        tokens_file,
     )
 
     os.makedirs(os.path.dirname(tokens_file), exist_ok=True)
@@ -286,7 +296,10 @@ def process_dataset(
 
     LOGGER.info(
         "[%s] wrote %d tokens (%d bytes); split done in %.0fs",
-        tag, num_tokens, os.path.getsize(tokens_file), time.perf_counter() - start,
+        tag,
+        num_tokens,
+        os.path.getsize(tokens_file),
+        time.perf_counter() - start,
     )
     return tokens_file
 

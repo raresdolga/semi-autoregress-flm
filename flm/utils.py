@@ -7,7 +7,6 @@ Copied from https://docs.python.org/3/howto/logging-cookbook.html#using-a-contex
 import argparse
 import logging
 import os
-import sys
 import pickle
 import time
 
@@ -18,7 +17,6 @@ import torch
 from scipy.integrate import quad
 from scipy.stats import norm
 from timm.scheduler import CosineLRScheduler
-from math import isfinite
 from typing import Union
 
 from numpy.polynomial.hermite import hermgauss
