@@ -60,7 +60,6 @@ class MemmapTokenDataset(torch.utils.data.Dataset):
         self.path = path
         self.dtype = dtype
         self.window_size = window_size
-        self.num_tokens = num_tokens
         self.num_rows = num_tokens // window_size  # drop the remainder
         self._arr = None
 

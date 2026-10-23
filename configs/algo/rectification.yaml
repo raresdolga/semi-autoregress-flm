@@ -14,6 +14,5 @@ loss_type: elbo
 ignore_bos: False
 gamma_min: -3.5
 gamma_max: -1.75
-use_linear_schedule: False
 use_simple_loss: False
 onestep_mode: False

@@ -91,7 +91,6 @@ class TrainerBase(L.LightningModule):
         # T = 0 means continuous diffusion, T > 0 means discrete diffusion (1/T, 2/T, ..., 1)
         self.T = self.config.algo.T
         self.num_tokens = self.config.model.length
-        self.softplus = torch.nn.Softplus()
         self.p_nucleus = self.config.sampling.p_nucleus
         # Noise Schedule
         self.noise = LogLinear()
@@ -108,13 +107,11 @@ class TrainerBase(L.LightningModule):
         else:
             self.ema = None
 
-        self.lr = self.config.optim.lr
         self.sampling_eps = self.config.training.sampling_eps
         self.time_conditioning = self.config.algo.time_conditioning
         self.neg_infinity = -1000000.0
         self.fast_forward_epochs = None
         self.fast_forward_batches = None
-        self.target_tokens = None
 
     def _validate_configuration(self):
         assert self.config.algo.backbone in {"dit", "hf_dit"}
@@ -353,7 +350,7 @@ class TrainerBase(L.LightningModule):
             given_t=batch["given_t"] if "given_t" in batch else None,
             not_sampling_t=self.config.training.not_sampling_t,
         )
-        self.metrics.update_train(losses.nlls, losses.prior_loss, losses.num_tokens)
+        self.metrics.update_train(losses.nlls, losses.num_tokens)
         self.log(
             name="trainer/loss",
             value=losses.loss.item(),
@@ -362,22 +359,6 @@ class TrainerBase(L.LightningModule):
             sync_dist=True,
         )
         return losses.loss
-
-    def on_train_epoch_end(self):
-        # NOTE:
-        # Originally, this method re-logged validation NLL metrics at the end
-        # of every *training* epoch by iterating over `self.metrics.valid_nlls`
-        # and calling `.compute()` again.
-        #
-        # That extra logging turned out to be a non-trivial bottleneck and also
-        # caused `val/*` metrics to appear much more frequently in WandB than
-        # actual validation runs (which already log in `on_validation_epoch_end`).
-        #
-        # We therefore keep this hook but make it a no-op to avoid the
-        # unnecessary per-train-epoch metric computation/logging. All
-        # validation-related metrics are still logged from
-        # `on_validation_epoch_end`, which is called whenever validation runs.
-        return
 
     def on_validation_epoch_start(self):
         self.metrics.reset()
@@ -392,7 +373,7 @@ class TrainerBase(L.LightningModule):
             batch["attention_mask"],
             xT=None if "xT" not in batch else batch["xT"],
         )
-        self.metrics.update_valid(losses.nlls, losses.prior_loss, losses.num_tokens)
+        self.metrics.update_valid(losses.nlls, losses.num_tokens)
         return losses.loss
 
     def on_validation_epoch_end(self):

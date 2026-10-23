@@ -53,6 +53,8 @@ pip install -r requirements.txt
 pip install flash-attn==2.8.3 --no-build-isolation
 ```
 
+With uv, `uv sync` installs everything, flash-attn included. `pyproject.toml` pins a prebuilt flash-attn 2.7.4 wheel for Python 3.11, torch 2.6 and CUDA 12, so nothing is compiled. It works on glibc 2.14 and newer, including the cluster. If you change the torch pin, change the wheel URL under `[tool.uv.sources]` to match.
+
 Our DiT backbone supports `torch.compile` with `max-autotune` for faster training. Enable it by setting the environment variable before running any script:
 
 ```bash

@@ -1,0 +1,799 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>algo.py Atlas</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=Spectral:wght@500;600;700&display=swap">
+<style>
+/* Layout: sticky contents rail on the left, one reading column (~68ch) on the right; diagrams may run wider than text. */
+:root{
+  --bg:#f5f6f8; --surface:#ffffff; --fg:#19202c; --muted:#596377; --rule:#d8dce4;
+  --accent:#2747c9;
+  --ar:#4b5b7a; --mask:#b86f0b; --unif:#7246bf; --flow:#0c8276;
+  --mask-soft:#f6e7cf; --unif-soft:#ebe2f8; --flow-soft:#d5efeb; --ar-soft:#e3e7ef;
+  --warn:#b4322a; --warn-soft:#f8e3e1;
+  --f-display:"Spectral", Georgia, "Times New Roman", serif;
+  --f-body:"IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono:"IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0e1218; --surface:#151b24; --fg:#e2e6ed; --muted:#9aa3b3; --rule:#2a313d;
+    --accent:#86a0ff;
+    --ar:#a4b4d4; --mask:#e8a64c; --unif:#ae90f2; --flow:#45c6b6;
+    --mask-soft:#3a2c17; --unif-soft:#2c2340; --flow-soft:#13332f; --ar-soft:#222a38;
+    --warn:#f08a80; --warn-soft:#3a1f1d;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0e1218; --surface:#151b24; --fg:#e2e6ed; --muted:#9aa3b3; --rule:#2a313d;
+  --accent:#86a0ff;
+  --ar:#a4b4d4; --mask:#e8a64c; --unif:#ae90f2; --flow:#45c6b6;
+  --mask-soft:#3a2c17; --unif-soft:#2c2340; --flow-soft:#13332f; --ar-soft:#222a38;
+  --warn:#f08a80; --warn-soft:#3a1f1d;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:16px;line-height:1.62;}
+.shell{display:grid;grid-template-columns:220px minmax(0,1fr);gap:48px;max-width:1160px;margin:0 auto;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-block:40px 80px;}
+nav.toc{position:sticky;top:calc(env(safe-area-inset-top, 0px) + 24px);align-self:start;font-size:13.5px;max-height:calc(100vh - 48px);overflow:auto}
+nav.toc .eyebrow{margin-bottom:10px}
+nav.toc ol{list-style:none;margin:0;padding:0;display:grid;gap:2px}
+nav.toc a{color:var(--muted);text-decoration:none;display:block;padding:3px 8px;border-radius:4px}
+nav.toc a:hover,nav.toc a:focus-visible{color:var(--fg);background:var(--surface)}
+nav.toc .sub a{padding-left:20px;font-size:13px}
+nav.toc .dot{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:7px;vertical-align:0}
+main{min-width:0;max-width:780px}
+header.top{padding-bottom:28px;border-bottom:1px solid var(--rule);margin-bottom:36px}
+.eyebrow{font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+h1{font-family:var(--f-display);font-weight:700;font-size:clamp(34px,5vw,48px);line-height:1.08;margin:10px 0 14px;text-wrap:balance;letter-spacing:-.01em}
+h2{font-family:var(--f-display);font-weight:600;font-size:30px;line-height:1.2;margin:64px 0 8px;text-wrap:balance;scroll-margin-top:24px}
+h3{font-family:var(--f-display);font-weight:600;font-size:22px;line-height:1.3;margin:44px 0 6px;scroll-margin-top:24px;text-wrap:balance}
+h4{font-size:15px;font-weight:600;margin:26px 0 4px}
+p{margin:12px 0}
+.lede{font-size:18px;color:var(--muted);max-width:62ch}
+code,.mono{font-family:var(--f-mono);font-size:.88em}
+p code, li code, td code{background:var(--surface);border:1px solid var(--rule);padding:0 4px;border-radius:3px}
+a{color:var(--accent)}
+.classline{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:4px 0 10px;font-family:var(--f-mono);font-size:13px;color:var(--muted)}
+.chip{display:inline-flex;align-items:center;gap:6px;font-family:var(--f-mono);font-size:12px;padding:2px 8px;border-radius:999px;border:1px solid currentColor;line-height:1.5}
+.c-ar{color:var(--ar)} .c-mask{color:var(--mask)} .c-unif{color:var(--unif)} .c-flow{color:var(--flow)}
+.bg-ar{background:var(--ar)} .bg-mask{background:var(--mask)} .bg-unif{background:var(--unif)} .bg-flow{background:var(--flow)}
+.part{border-top:3px solid var(--rule);padding-top:4px;margin-top:72px}
+.part.p-ar{border-color:var(--ar)} .part.p-mask{border-color:var(--mask)} .part.p-unif{border-color:var(--unif)} .part.p-flow{border-color:var(--flow)}
+.part > h2{margin-top:18px}
+figure{margin:28px 0;padding:0}
+figure .canvas{background:var(--surface);border:1px solid var(--rule);border-radius:6px;padding:16px;overflow-x:auto}
+figure .canvas > svg{display:block;width:100%;height:auto;min-width:520px;color:var(--fg)}
+figure.narrow .canvas > svg{min-width:0;max-width:340px;margin:0 auto}
+mjx-container svg{display:inline-block;min-width:0}
+figcaption{font-size:14px;color:var(--muted);margin-top:8px;max-width:68ch}
+figcaption b{color:var(--fg);font-weight:600}
+.math{overflow-x:auto;overflow-y:hidden;margin:14px 0;padding:2px 0}
+mjx-container[display="true"]{overflow-x:auto;overflow-y:hidden;max-width:100%;padding:4px 0}
+.box{background:var(--surface);border:1px solid var(--rule);border-radius:6px;padding:14px 18px;margin:20px 0}
+.box > :first-child{margin-top:0} .box > :last-child{margin-bottom:0}
+.box.flip{border-left:4px solid var(--flow)}
+.box.bug{border-color:var(--warn);background:var(--warn-soft)}
+.box .label{font-family:var(--f-mono);font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:4px}
+.box.bug .label{color:var(--warn)}
+.tbl{overflow-x:auto;margin:16px 0}
+table{border-collapse:collapse;width:100%;font-size:14.5px}
+th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--rule);vertical-align:top}
+th{font-weight:600;font-size:12.5px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+td code{white-space:nowrap}
+.split{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:28px;align-items:start}
+.split figure{margin-top:8px}
+ol.steps{padding-left:22px} ol.steps li{margin:6px 0}
+.algo-step{font-family:var(--f-mono);font-size:13.5px;background:var(--surface);border:1px solid var(--rule);border-radius:6px;padding:12px 16px;overflow-x:auto;white-space:pre;line-height:1.55}
+/* SVG classes */
+.s-line{stroke:currentColor;fill:none;stroke-width:1.4}
+.s-faint{stroke:var(--rule);fill:none;stroke-width:1}
+.s-grid{stroke:var(--rule);stroke-width:1;fill:none}
+.t{fill:currentColor;font-family:var(--f-body);font-size:13px}
+.t-sm{fill:var(--muted);font-family:var(--f-body);font-size:11.5px}
+.t-mono{fill:currentColor;font-family:var(--f-mono);font-size:12px}
+.t-mono-sm{fill:currentColor;font-family:var(--f-mono);font-size:11px}
+.t-head{fill:currentColor;font-family:var(--f-body);font-size:13px;font-weight:600}
+.n-base{fill:var(--bg);stroke:var(--muted);stroke-width:1.2;stroke-dasharray:4 3}
+.n-ar{fill:var(--ar-soft);stroke:var(--ar);stroke-width:1.3}
+.n-mask{fill:var(--mask-soft);stroke:var(--mask);stroke-width:1.3}
+.n-unif{fill:var(--unif-soft);stroke:var(--unif);stroke-width:1.3}
+.n-flow{fill:var(--flow-soft);stroke:var(--flow);stroke-width:1.3}
+.n-plain{fill:var(--surface);stroke:var(--muted);stroke-width:1}
+.f-mask{fill:var(--mask)} .f-unif{fill:var(--unif)} .f-flow{fill:var(--flow)} .f-ar{fill:var(--ar)} .f-fg{fill:currentColor} .f-muted{fill:var(--muted)} .f-accent{fill:var(--accent)} .f-surface{fill:var(--surface)} .f-rule{fill:var(--rule)}
+.st-mask{stroke:var(--mask)} .st-unif{stroke:var(--unif)} .st-flow{stroke:var(--flow)} .st-ar{stroke:var(--ar)} .st-accent{stroke:var(--accent)} .st-muted{stroke:var(--muted)}
+.dash{stroke-dasharray:5 4}
+.ctl{fill:var(--flow-soft);stroke:none;opacity:.8}
+@media (max-width: 900px){
+  .shell{grid-template-columns:minmax(0,1fr);gap:0}
+  nav.toc{position:static;max-height:none;border-bottom:1px solid var(--rule);padding-bottom:16px;margin-bottom:24px}
+  nav.toc ol{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+  nav.toc .sub a{padding-left:8px}
+  .split{grid-template-columns:minmax(0,1fr)}
+}
+@media (prefers-reduced-motion: reduce){*{scroll-behavior:auto!important}}
+html{scroll-behavior:smooth}
+</style>
+
+<script>
+window.MathJax = {
+  tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']], tags: 'none' },
+  svg: { fontCache: 'global' },
+  options: { skipHtmlTags: ['script','noscript','style','textarea','pre','code','svg'] }
+};
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg.min.js"></script>
+
+</head>
+<body>
+<div class="shell">
+<nav class="toc" aria-label="Contents">
+  <div class="eyebrow">Contents</div>
+  <ol>
+    <li><a href="#notation">Notation &amp; map</a></li>
+    <li><a href="#ar"><span class="dot bg-ar"></span>AR</a></li>
+    <li><a href="#masked"><span class="dot bg-mask"></span>Masked diffusion</a></li>
+    <li class="sub"><a href="#mdlm">MDLM</a></li>
+    <li class="sub"><a href="#d3pm">D3PMAbsorb</a></li>
+    <li class="sub"><a href="#sedd">SEDDAbsorb</a></li>
+    <li><a href="#uniform"><span class="dot bg-unif"></span>Uniform diffusion</a></li>
+    <li class="sub"><a href="#duobase">DUO_BASE</a></li>
+    <li class="sub"><a href="#duo">DUO</a></li>
+    <li class="sub"><a href="#distill">Distillation</a></li>
+    <li class="sub"><a href="#rect">Rectification</a></li>
+    <li><a href="#flm"><span class="dot bg-flow"></span>Flow LM (FLM)</a></li>
+    <li class="sub"><a href="#tau">Time reparam τ(t)</a></li>
+    <li><a href="#fmlm"><span class="dot bg-flow"></span>Flow maps (FMLM)</a></li>
+    <li class="sub"><a href="#psd">PSD</a></li>
+    <li class="sub"><a href="#esd">ESD</a></li>
+    <li class="sub"><a href="#lsd">LSD</a></li>
+    <li class="sub"><a href="#fmlm-sample">Sampling</a></li>
+    <li><a href="#twomodel"><span class="dot bg-flow"></span>Two-model &amp; two-stage</a></li>
+    <li><a href="#notes">Issues found in the code</a></li>
+  </ol>
+</nav>
+
+<main>
+<header class="top">
+  <div class="eyebrow">flm/algo.py · 13 training algorithms</div>
+  <h1>The algo.py Atlas</h1>
+  <p class="lede">Every language-modelling algorithm in <code>flm/algo.py</code>, written out as math and drawn as diagrams. Each section gives the forward (noising) process, the training loss exactly as the code computes it, and the sampler, with the code variable that holds each symbol.</p>
+</header>
+
+<!-- ============================================================ -->
+<section id="notation">
+<h2>Notation and the map</h2>
+<p>Symbols are named after the code's variables. Clean tokens are \(x_0\) (<code>x0</code>, shape (B, L)) in the discrete sections, and \(x_1\) (<code>x1</code>) in the flow sections, where data sits at \(t=1\). Noisy inputs are \(x_t\) (<code>xt</code> / <code>x_t</code>). \(V\) is <code>self.vocab_size</code> (<code>utils.py</code> calls it <code>&#75;</code>), \(e_v\) is the one-hot of token \(v\) (<code>F.one_hot</code>), \(\mathbf 1\) is the all-ones vector and \(m\) is <code>mask_index</code>. The network's per-position distribution over the clean token is \(x_\theta(x_t)\); the code holds its log, <code>log_x_theta</code>. Losses are per token, averaged over valid tokens by <code>_loss</code>.</p>
+
+<div class="tbl"><table>
+<thead><tr><th>Symbol</th><th>Meaning</th><th>Code</th></tr></thead>
+<tbody>
+<tr><td>\(x_0\), \(x_1\)</td><td>Clean tokens (discrete / flow sections)</td><td><code>x0</code>, <code>x1</code>; one-hot: <code>target_data</code></td></tr>
+<tr><td>\(x_t\), \(x_s\)</td><td>Noisy input at time \(t\) / \(s\)</td><td><code>xt</code>, <code>x_t</code>, <code>x_s</code>; <code>z</code> while sampling</td></tr>
+<tr><td>\(\alpha_t\)</td><td>Probability a token is still clean</td><td><code>alpha_t</code></td></tr>
+<tr><td>\(d\alpha_t\)</td><td>Time derivative of \(\alpha_t\) (negative)</td><td><code>dalpha_t</code></td></tr>
+<tr><td>\(\sigma\), \(d\sigma\)</td><td>\(-\log\alpha_t\) and its derivative / increment</td><td><code>sigma</code>, <code>dsigma</code></td></tr>
+<tr><td>\(dt\)</td><td>Step size, or the gap \(t-s\)</td><td><code>dt</code></td></tr>
+<tr><td>\(\tau_s,\tau_t\)</td><td>Model time (FLM family); \(s,t\) = <code>_tau_to_t(tau)</code></td><td><code>tau_s</code>, <code>tau_t</code>, <code>s</code>, <code>t</code></td></tr>
+<tr><td>\(D_{st}\)</td><td>Two-time denoiser, a point on the simplex</td><td><code>log_D_st.exp()</code></td></tr>
+<tr><td>\(X_{st}\)</td><td>Flow map from \(s\) to \(t\)</td><td><code>X_st</code>, <code>X_su</code></td></tr>
+<tr><td>\(\operatorname{sg}(\cdot)\)</td><td>Stop-gradient</td><td><code>stopgrad</code>, <code>.detach()</code></td></tr>
+</tbody></table></div>
+
+<div class="box flip"><span class="label">Time runs in opposite directions</span>
+The discrete diffusions (MDLM, D3PM, SEDD, DUO) use \(t=0\) for clean data and \(t=1\) for pure noise. The flow models (FLM, FMLM and variants) use the flow-matching convention: \(t=0\) is Gaussian noise and \(t=1\) is data. The section headers repeat this so you don't have to remember it.
+</div>
+
+<figure>
+<div class="canvas">
+<svg viewBox="0 0 810 330" role="img" aria-label="Class hierarchy of algo.py grouped into four families: autoregressive, masked diffusion, uniform diffusion and flow on one-hot vectors, with dashed arrows showing which flow models load others as frozen teachers.">
+  <defs>
+    <marker id="mA" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="f-flow"/></marker>
+  </defs>
+  <!-- headers -->
+  <rect x="20" y="10" width="10" height="10" rx="2" class="f-ar"/><text x="36" y="19" class="t-head">Autoregressive</text>
+  <rect x="215" y="10" width="10" height="10" rx="2" class="f-mask"/><text x="231" y="19" class="t-head">Masked diffusion</text>
+  <rect x="410" y="10" width="10" height="10" rx="2" class="f-unif"/><text x="426" y="19" class="t-head">Uniform diffusion</text>
+  <rect x="605" y="10" width="10" height="10" rx="2" class="f-flow"/><text x="621" y="19" class="t-head">Flow on one-hots</text>
+
+  <!-- col 1 -->
+  <rect x="20" y="40" width="160" height="32" rx="4" class="n-base"/><text x="100" y="60" text-anchor="middle" class="t-mono">TrainerBase</text>
+  <path d="M32 72 V126 H44" class="s-line st-muted"/>
+  <rect x="44" y="110" width="136" height="32" rx="4" class="n-ar"/><text x="112" y="130" text-anchor="middle" class="t-mono">AR</text>
+
+  <!-- col 2 -->
+  <rect x="215" y="40" width="160" height="32" rx="4" class="n-base"/><text x="295" y="60" text-anchor="middle" class="t-mono">AbsorbingState</text>
+  <path d="M227 72 V226 M227 126 H239 M227 176 H239 M227 226 H239" class="s-line st-muted"/>
+  <rect x="239" y="110" width="136" height="32" rx="4" class="n-mask"/><text x="307" y="130" text-anchor="middle" class="t-mono">MDLM</text>
+  <rect x="239" y="160" width="136" height="32" rx="4" class="n-mask"/><text x="307" y="180" text-anchor="middle" class="t-mono">D3PMAbsorb</text>
+  <rect x="239" y="210" width="136" height="32" rx="4" class="n-mask"/><text x="307" y="230" text-anchor="middle" class="t-mono">SEDDAbsorb</text>
+
+  <!-- col 3 -->
+  <rect x="410" y="40" width="160" height="32" rx="4" class="n-base"/><text x="490" y="60" text-anchor="middle" class="t-mono">UniformState</text>
+  <path d="M422 72 V126 H434" class="s-line st-muted"/>
+  <rect x="434" y="110" width="136" height="32" rx="4" class="n-unif"/><text x="502" y="130" text-anchor="middle" class="t-mono">DUO_BASE</text>
+  <path d="M446 142 V176 H458" class="s-line st-muted"/>
+  <rect x="458" y="160" width="112" height="32" rx="4" class="n-unif"/><text x="514" y="180" text-anchor="middle" class="t-mono">DUO</text>
+  <path d="M470 192 V276 M470 226 H482 M470 276 H482" class="s-line st-muted"/>
+  <rect x="482" y="210" width="88" height="32" rx="4" class="n-unif"/><text x="526" y="230" text-anchor="middle" class="t-mono-sm">Distillation</text>
+  <rect x="482" y="260" width="88" height="32" rx="4" class="n-unif"/><text x="526" y="280" text-anchor="middle" class="t-mono-sm">Rectification</text>
+
+  <!-- col 4 -->
+  <rect x="605" y="40" width="160" height="32" rx="4" class="n-base"/><text x="685" y="60" text-anchor="middle" class="t-mono">FLMBase</text>
+  <path d="M617 72 V276 M617 126 H629 M617 176 H629 M617 226 H629 M617 276 H629" class="s-line st-muted"/>
+  <rect x="629" y="110" width="136" height="32" rx="4" class="n-flow"/><text x="697" y="130" text-anchor="middle" class="t-mono">FLM</text>
+  <rect x="629" y="160" width="136" height="32" rx="4" class="n-flow"/><text x="697" y="180" text-anchor="middle" class="t-mono">FMLM</text>
+  <rect x="629" y="210" width="136" height="32" rx="4" class="n-flow"/><text x="697" y="230" text-anchor="middle" class="t-mono-sm">FMLM_TwoModel</text>
+  <rect x="629" y="260" width="136" height="32" rx="4" class="n-flow"/><text x="697" y="280" text-anchor="middle" class="t-mono-sm">FMLM_TwoStage</text>
+  <!-- teacher edges -->
+  <path d="M765 120 C 784 120, 784 170, 767 170" class="s-line st-flow dash" marker-end="url(#mA)"/>
+  <path d="M765 132 C 796 132, 796 220, 767 220" class="s-line st-flow dash" marker-end="url(#mA)"/>
+  <path d="M765 232 C 784 232, 784 270, 767 270" class="s-line st-flow dash" marker-end="url(#mA)"/>
+  <path d="M765 138 C 806 138, 806 282, 767 282" class="s-line st-flow dash" marker-end="url(#mA)"/>
+
+  <!-- footers -->
+  <text x="20" y="318" class="t-sm">corrupts nothing; predicts left→right</text>
+  <text x="215" y="318" class="t-sm">token → [MASK] w.p. 1−α<tspan dy="3" font-size="78%">t</tspan><tspan dy="-3">​</tspan></text>
+  <text x="410" y="318" class="t-sm">token → random token w.p. 1−α<tspan dy="3" font-size="78%">t</tspan><tspan dy="-3">​</tspan></text>
+  <text x="605" y="318" class="t-sm">one-hot → mix with Gaussian</text>
+</svg>
+</div>
+<figcaption><b>Four families, thirteen classes.</b> Solid connectors are Python inheritance; dashed base boxes are abstract classes in <code>trainer_base.py</code>. Dashed teal arrows mark a frozen teacher checkpoint: FMLM and FMLM_TwoModel distil an FLM denoiser, and FMLM_TwoStage loads both an FLM (<code>teacher_f</code>) and a TwoModel (<code>teacher_g</code>).</figcaption>
+</figure>
+
+<figure>
+<div class="canvas">
+<svg viewBox="0 0 760 270" role="img" aria-label="The same six-token sentence corrupted three ways: masked diffusion replaces tokens with MASK, uniform diffusion replaces them with random tokens, and the flow model mixes each one-hot vector with Gaussian noise.">
+  <text x="162" y="20" class="t-head">partly noised</text>
+  <text x="472" y="20" class="t-head">fully noised (prior)</text>
+  <text x="162" y="38" class="t-sm">clean x = "the cat sat on the mat"</text>
+  <!-- row labels -->
+  <text x="0" y="74" class="t-head c-mask" style="fill:var(--mask)">Masked</text><text x="0" y="90" class="t-sm">MDLM · D3PM · SEDD</text>
+  <text x="0" y="134" class="t-head" style="fill:var(--unif)">Uniform</text><text x="0" y="150" class="t-sm">DUO · Distill · Rectif.</text>
+  <text x="0" y="204" class="t-head" style="fill:var(--flow)">Gaussian</text><text x="0" y="220" class="t-sm">FLM · FMLM</text>
+
+  <!-- masked mid -->
+  <g class="t-mono-sm">
+    <rect x="160" y="60" width="40" height="32" rx="3" class="n-plain"/><text x="180" y="80" text-anchor="middle">the</text>
+    <rect x="204" y="60" width="40" height="32" rx="3" class="n-mask"/><text x="224" y="80" text-anchor="middle">[M]</text>
+    <rect x="248" y="60" width="40" height="32" rx="3" class="n-plain"/><text x="268" y="80" text-anchor="middle">sat</text>
+    <rect x="292" y="60" width="40" height="32" rx="3" class="n-mask"/><text x="312" y="80" text-anchor="middle">[M]</text>
+    <rect x="336" y="60" width="40" height="32" rx="3" class="n-plain"/><text x="356" y="80" text-anchor="middle">the</text>
+    <rect x="380" y="60" width="40" height="32" rx="3" class="n-mask"/><text x="400" y="80" text-anchor="middle">[M]</text>
+    <!-- masked full -->
+    <rect x="470" y="60" width="40" height="32" rx="3" class="n-mask"/><text x="490" y="80" text-anchor="middle">[M]</text>
+    <rect x="514" y="60" width="40" height="32" rx="3" class="n-mask"/><text x="534" y="80" text-anchor="middle">[M]</text>
+    <rect x="558" y="60" width="40" height="32" rx="3" class="n-mask"/><text x="578" y="80" text-anchor="middle">[M]</text>
+    <rect x="602" y="60" width="40" height="32" rx="3" class="n-mask"/><text x="622" y="80" text-anchor="middle">[M]</text>
+    <rect x="646" y="60" width="40" height="32" rx="3" class="n-mask"/><text x="666" y="80" text-anchor="middle">[M]</text>
+    <rect x="690" y="60" width="40" height="32" rx="3" class="n-mask"/><text x="710" y="80" text-anchor="middle">[M]</text>
+
+    <!-- uniform mid -->
+    <rect x="160" y="120" width="40" height="32" rx="3" class="n-plain"/><text x="180" y="140" text-anchor="middle">the</text>
+    <rect x="204" y="120" width="40" height="32" rx="3" class="n-plain"/><text x="224" y="140" text-anchor="middle">cat</text>
+    <rect x="248" y="120" width="40" height="32" rx="3" class="n-unif"/><text x="268" y="140" text-anchor="middle">red</text>
+    <rect x="292" y="120" width="40" height="32" rx="3" class="n-plain"/><text x="312" y="140" text-anchor="middle">on</text>
+    <rect x="336" y="120" width="40" height="32" rx="3" class="n-unif"/><text x="356" y="140" text-anchor="middle">ox</text>
+    <rect x="380" y="120" width="40" height="32" rx="3" class="n-plain"/><text x="400" y="140" text-anchor="middle">mat</text>
+    <!-- uniform full -->
+    <rect x="470" y="120" width="40" height="32" rx="3" class="n-unif"/><text x="490" y="140" text-anchor="middle">if</text>
+    <rect x="514" y="120" width="40" height="32" rx="3" class="n-unif"/><text x="534" y="140" text-anchor="middle">run</text>
+    <rect x="558" y="120" width="40" height="32" rx="3" class="n-unif"/><text x="578" y="140" text-anchor="middle">7</text>
+    <rect x="602" y="120" width="40" height="32" rx="3" class="n-unif"/><text x="622" y="140" text-anchor="middle">blue</text>
+    <rect x="646" y="120" width="40" height="32" rx="3" class="n-unif"/><text x="666" y="140" text-anchor="middle">a</text>
+    <rect x="690" y="120" width="40" height="32" rx="3" class="n-unif"/><text x="710" y="140" text-anchor="middle">sat</text>
+  </g>
+
+  <!-- gaussian rows: each cell is a mini vector of 5 logits, baseline y=224 -->
+  <g>
+    <line x1="160" y1="224" x2="420" y2="224" class="s-faint"/>
+    <line x1="470" y1="224" x2="730" y2="224" class="s-faint"/>
+    <!-- mid: the true coordinate (index 2) is tallest-ish, others noisy -->
+    <g transform="translate(163,0)"><rect x="0" y="214" width="5" height="10" class="f-muted"/><rect x="7" y="218" width="5" height="6" class="f-muted"/><rect x="14" y="192" width="5" height="32" class="f-flow"/><rect x="21" y="210" width="5" height="14" class="f-muted"/><rect x="28" y="219" width="5" height="5" class="f-muted"/></g>
+    <g transform="translate(207,0)"><rect x="0" y="206" width="5" height="18" class="f-muted"/><rect x="7" y="215" width="5" height="9" class="f-muted"/><rect x="14" y="198" width="5" height="26" class="f-flow"/><rect x="21" y="220" width="5" height="4" class="f-muted"/><rect x="28" y="212" width="5" height="12" class="f-muted"/></g>
+    <g transform="translate(251,0)"><rect x="0" y="219" width="5" height="5" class="f-muted"/><rect x="7" y="208" width="5" height="16" class="f-muted"/><rect x="14" y="190" width="5" height="34" class="f-flow"/><rect x="21" y="216" width="5" height="8" class="f-muted"/><rect x="28" y="214" width="5" height="10" class="f-muted"/></g>
+    <g transform="translate(295,0)"><rect x="0" y="200" width="5" height="24" class="f-muted"/><rect x="7" y="217" width="5" height="7" class="f-muted"/><rect x="14" y="205" width="5" height="19" class="f-flow"/><rect x="21" y="212" width="5" height="12" class="f-muted"/><rect x="28" y="220" width="5" height="4" class="f-muted"/></g>
+    <g transform="translate(339,0)"><rect x="0" y="216" width="5" height="8" class="f-muted"/><rect x="7" y="212" width="5" height="12" class="f-muted"/><rect x="14" y="195" width="5" height="29" class="f-flow"/><rect x="21" y="221" width="5" height="3" class="f-muted"/><rect x="28" y="209" width="5" height="15" class="f-muted"/></g>
+    <g transform="translate(383,0)"><rect x="0" y="213" width="5" height="11" class="f-muted"/><rect x="7" y="203" width="5" height="21" class="f-muted"/><rect x="14" y="196" width="5" height="28" class="f-flow"/><rect x="21" y="218" width="5" height="6" class="f-muted"/><rect x="28" y="215" width="5" height="9" class="f-muted"/></g>
+    <!-- full noise -->
+    <g transform="translate(473,0)"><rect x="0" y="205" width="5" height="19" class="f-muted"/><rect x="7" y="214" width="5" height="10" class="f-muted"/><rect x="14" y="219" width="5" height="5" class="f-muted"/><rect x="21" y="200" width="5" height="24" class="f-muted"/><rect x="28" y="212" width="5" height="12" class="f-muted"/></g>
+    <g transform="translate(517,0)"><rect x="0" y="218" width="5" height="6" class="f-muted"/><rect x="7" y="199" width="5" height="25" class="f-muted"/><rect x="14" y="211" width="5" height="13" class="f-muted"/><rect x="21" y="216" width="5" height="8" class="f-muted"/><rect x="28" y="207" width="5" height="17" class="f-muted"/></g>
+    <g transform="translate(561,0)"><rect x="0" y="210" width="5" height="14" class="f-muted"/><rect x="7" y="220" width="5" height="4" class="f-muted"/><rect x="14" y="203" width="5" height="21" class="f-muted"/><rect x="21" y="213" width="5" height="11" class="f-muted"/><rect x="28" y="198" width="5" height="26" class="f-muted"/></g>
+    <g transform="translate(605,0)"><rect x="0" y="201" width="5" height="23" class="f-muted"/><rect x="7" y="212" width="5" height="12" class="f-muted"/><rect x="14" y="216" width="5" height="8" class="f-muted"/><rect x="21" y="206" width="5" height="18" class="f-muted"/><rect x="28" y="219" width="5" height="5" class="f-muted"/></g>
+    <g transform="translate(649,0)"><rect x="0" y="215" width="5" height="9" class="f-muted"/><rect x="7" y="205" width="5" height="19" class="f-muted"/><rect x="14" y="200" width="5" height="24" class="f-muted"/><rect x="21" y="219" width="5" height="5" class="f-muted"/><rect x="28" y="211" width="5" height="13" class="f-muted"/></g>
+    <g transform="translate(693,0)"><rect x="0" y="209" width="5" height="15" class="f-muted"/><rect x="7" y="217" width="5" height="7" class="f-muted"/><rect x="14" y="213" width="5" height="11" class="f-muted"/><rect x="21" y="199" width="5" height="25" class="f-muted"/><rect x="28" y="214" width="5" height="10" class="f-muted"/></g>
+  </g>
+  <text x="162" y="246" class="t-sm">each cell is a V-dim vector (5 coords drawn); teal = true token's coordinate</text>
+  <text x="472" y="262" class="t-sm">x₀ = ε ~ N(0, I)   (FLM time t = 0)</text>
+  <text x="162" y="262" class="t-sm">x<tspan dy="3" font-size="78%">t</tspan><tspan dy="-3">​</tspan> = (1−t) ε + t e<tspan dy="3" font-size="78%">x</tspan><tspan dy="-3">​</tspan></text>
+</svg>
+</div>
+<figcaption><b>The three corruptions, side by side.</b> Masked diffusion only ever hides tokens, so a visible token is always correct. Uniform diffusion swaps tokens for random ones, so the model must also decide which visible tokens to trust. The flow models never pick a token while noising: each position is a continuous \(V\)-dimensional vector that slides from Gaussian noise to the one-hot \(e_x\).</figcaption>
+</figure>
+</section>
+
+<!-- ============================================================ -->
+<section class="part p-ar" id="ar">
+<div class="eyebrow c-ar" style="color:var(--ar)">Family 1 · Autoregressive</div>
+<h2>AR: next-token prediction</h2>
+<div class="classline"><span class="chip c-ar">class AR(TrainerBase)</span> algo.py:16</div>
+<p>The baseline. The joint distribution factorises left to right:</p>
+<div class="math">\[ p_\theta(x) = \prod_{i=1}^{L-1} p_\theta\!\left(x^{i+1}\mid x^{1:i}\right), \qquad
+\ell_i = -\log p_\theta\!\left(x^{i+1}\mid x^{1:i}\right). \]</div>
+<p><code>_process_model_input</code> shifts the sequence (<code>input = x[:, :-1]</code>, <code>target = x[:, 1:]</code>), and <code>nll</code> sets the <code>[MASK]</code> logit to \(-\infty\) before the log-softmax, so the extra mask token, which only exists so all algorithms share a vocabulary, can never be predicted.</p>
+
+<figure>
+<div class="canvas">
+<svg viewBox="0 0 640 150" role="img" aria-label="Causal attention: each predicted token depends only on tokens to its left.">
+  <g class="s-faint">
+    <line x1="80" y1="112" x2="80" y2="44"/>
+    <line x1="80" y1="112" x2="190" y2="44"/><line x1="190" y1="112" x2="190" y2="44"/>
+    <line x1="80" y1="112" x2="410" y2="44"/><line x1="190" y1="112" x2="410" y2="44"/><line x1="300" y1="112" x2="410" y2="44"/><line x1="410" y1="112" x2="410" y2="44"/>
+    <line x1="80" y1="112" x2="520" y2="44"/><line x1="190" y1="112" x2="520" y2="44"/><line x1="300" y1="112" x2="520" y2="44"/><line x1="410" y1="112" x2="520" y2="44"/><line x1="520" y1="112" x2="520" y2="44"/>
+  </g>
+  <g class="st-ar" stroke-width="2" fill="none">
+    <line x1="80" y1="112" x2="300" y2="44"/><line x1="190" y1="112" x2="300" y2="44"/><line x1="300" y1="112" x2="300" y2="44"/>
+  </g>
+  <g class="t-mono-sm">
+    <rect x="50" y="112" width="60" height="26" rx="3" class="n-plain"/><text x="80" y="129" text-anchor="middle">&lt;bos&gt;</text>
+    <rect x="160" y="112" width="60" height="26" rx="3" class="n-plain"/><text x="190" y="129" text-anchor="middle">the</text>
+    <rect x="270" y="112" width="60" height="26" rx="3" class="n-plain"/><text x="300" y="129" text-anchor="middle">cat</text>
+    <rect x="380" y="112" width="60" height="26" rx="3" class="n-plain"/><text x="410" y="129" text-anchor="middle">sat</text>
+    <rect x="490" y="112" width="60" height="26" rx="3" class="n-plain"/><text x="520" y="129" text-anchor="middle">on</text>
+    <rect x="50" y="18" width="60" height="26" rx="3" class="n-ar"/><text x="80" y="35" text-anchor="middle">the</text>
+    <rect x="160" y="18" width="60" height="26" rx="3" class="n-ar"/><text x="190" y="35" text-anchor="middle">cat</text>
+    <rect x="270" y="18" width="60" height="26" rx="3" class="n-ar" stroke-width="2.2"/><text x="300" y="35" text-anchor="middle">sat</text>
+    <rect x="380" y="18" width="60" height="26" rx="3" class="n-ar"/><text x="410" y="35" text-anchor="middle">on</text>
+    <rect x="490" y="18" width="60" height="26" rx="3" class="n-ar"/><text x="520" y="35" text-anchor="middle">the</text>
+  </g>
+  <text x="566" y="129" class="t-sm">input x[:, :-1]</text>
+  <text x="566" y="35" class="t-sm">target x[:, 1:]</text>
+</svg>
+</div>
+<figcaption><b>One forward pass scores all \(L-1\) predictions.</b> The highlighted lines show that predicting <code>sat</code> can attend to <code>&lt;bos&gt;</code>, <code>the</code> and <code>cat</code> only.</figcaption>
+</figure>
+
+<h4>Sampling</h4>
+<p><code>generate_samples</code> pre-draws Gumbel noise \(g\in\mathbb R^{L\times V}\), \(g_{i,v}\sim\text{Gumbel}(0,1)\), and decodes one token per forward pass using the Gumbel-max trick, which is an exact sample from \(p_\theta\):</p>
+<div class="math">\[ x^{i+1} = \arg\max_v \left[\log p_\theta(v\mid x^{1:i}) + g_{i,v}\right] \;\sim\; p_\theta(\cdot\mid x^{1:i}). \]</div>
+<p>This takes \(L-1\) sequential network calls (no KV cache here), which is the cost every other family tries to beat.</p>
+</section>
+
+<!-- ============================================================ -->
+<section class="part p-mask" id="masked">
+<div class="eyebrow" style="color:var(--mask)">Family 2 · Masked (absorbing-state) diffusion · t = 0 clean, t = 1 all masks</div>
+<h2>Masked diffusion</h2>
+<p>All three classes share the forward process in <code>AbsorbingState.q_xt</code>: each token independently survives with probability \(\alpha_t\) and otherwise becomes <code>[MASK]</code>.</p>
+<div class="math">\[ q(x_t^i \mid x_0^i) = \operatorname{Cat}\!\big(\alpha_t\, e_{x_0^i} + (1-\alpha_t)\, e_m\big),\qquad
+\alpha_t = 1-(1-\epsilon)t,\quad d\alpha_t = -(1-\epsilon),\quad \epsilon = 10^{-3}. \]</div>
+<p>This is the <code>LogLinear</code> schedule; the name comes from \(\sigma_t = -\log\alpha_t = -\log(1-(1-\epsilon)t)\). The prior at \(t=1\) is (almost) all masks. Once a token is unmasked during sampling it never changes again.</p>
+
+<h3 id="mdlm">MDLM</h3>
+<div class="classline"><span class="chip c-mask">class MDLM(AbsorbingState)</span> algo.py:70</div>
+<p><b>Parameterisation (SUBS).</b> <code>_process_model_output</code> enforces two facts that are true of the real posterior: the clean token is never <code>[MASK]</code>, and a visible token is already correct.</p>
+<div class="math">\[ x_\theta(x_t)^i_m = 0, \qquad x_\theta(x_t)^i = e_{x_t^i}\ \text{ if } x_t^i \neq m \quad(\text{"carry-over"}). \]</div>
+<p><b>Loss.</b> With those constraints the continuous-time ELBO collapses to a weighted cross-entropy on the masked positions only (unmasked positions contribute \(\log 1 = 0\)):</p>
+<div class="math">\[ \mathcal L_{\text{MDLM}} = \mathbb E_{t\sim U[0,1]}\,\mathbb E_{x_t\sim q}\; \sum_{i}\; \frac{d\alpha_t}{1-\alpha_t}\, \log\big\langle x_\theta(x_t)^i,\, e_{x_0^i}\big\rangle . \]</div>
+<p>Since \(d\alpha_t<0\) the weight \(d\alpha_t/(1-\alpha_t) \approx -1/t\) is negative, so each term is a positive cross-entropy, up-weighted at low noise. Code: <code>log_p_theta * dalpha_t / (1 - alpha_t)</code>.</p>
+
+<p><b>Sampler (<code>ancestral_cache</code>).</b> For \(s&lt;t\), a masked position is resampled from the reverse posterior, and visible tokens are copied:</p>
+<div class="math">\[ p_\theta(x_s^i \mid x_t) = \frac{\alpha_s-\alpha_t}{1-\alpha_t}\, x_\theta(x_t)^i + \frac{1-\alpha_s}{1-\alpha_t}\, e_m \quad\text{if } x_t^i=m, \qquad x_s^i = x_t^i \text{ otherwise}. \]</div>
+<p>The code builds the unnormalised vector <code>q_xs = p_x0 * (alpha_s - alpha_t)</code>, <code>q_xs[mask] = 1 - alpha_s</code>; <code>sample_categorical</code> uses the exponential-race form of Gumbel-max, so normalisation is unnecessary. The "cache" means the denoiser output is reused when a step unmasks nothing, so the network is called at most once per newly revealed token group.</p>
+
+<p><b>Score view.</b> <code>_get_score</code> also exposes the concrete score \(s(x_t)_y = p_t(y)/p_t(x_t)\) for the analytic sampler. For a masked position and an unmasked candidate \(y\):</p>
+<div class="math">\[ s_\theta(x_t)_y = x_\theta(x_t)_y\,\frac{\alpha_t}{1-\alpha_t} = \frac{x_\theta(x_t)_y}{e^{\sigma_t}-1},\qquad \log k = -\log\!\big(e^{\sigma_t}-1\big)\ (\texttt{log\_k}). \]</div>
+
+<h3 id="d3pm">D3PMAbsorb</h3>
+<div class="classline"><span class="chip c-mask">class D3PMAbsorb(AbsorbingState)</span> algo.py:144</div>
+<p>The same forward process in <b>discrete time</b>: \(T\) steps, \(t\in\{1/T,\dots,1\}\), \(s=t-\mathit{dt}\) with \(\mathit{dt} = 1/T\). The network uses the "mean" parameterisation: \(x_\theta\) is a full softmax that may put mass \(x_\theta(m)\) on the mask token. The loss is the discrete-time ELBO:</p>
+<div class="math">\[ \mathcal L_{\text{D3PM}} = \underbrace{-\log p_\theta(x_0\mid x_0)}_{\texttt{\_reconstruction\_loss}} \;+\; T\;\mathbb E_t \sum_{i:\,x_t^i=m} \mathrm{KL}\!\Big(q(x_s^i\mid x_t^i, x_0^i)\,\Big\|\,p_\theta(x_s^i\mid x_t)\Big). \]</div>
+<p>For a masked position the true posterior is two-point: unmask to \(x_0^i\) with probability \(\mathit{dt}/t\), stay masked with probability \(1-\mathit{dt}/t\). The model posterior is \(p_\theta(x_s = v) \propto \mathit{dt}\,x_\theta(v)\) for \(v\neq m\) and \(\propto (1-\alpha_s)(1-x_\theta(m)) + x_\theta(m)\) for \(m\), with normaliser \(Z = t + \alpha_t x_\theta(m)\). Writing \(x_m = x_\theta(m)\), the KL in closed form is</p>
+<div class="math">\[ \mathrm{KL} = \frac{\mathit{dt}}{t}\Big[\log\!\Big(1+\tfrac{\alpha_t x_m}{t}\Big) - \log x_\theta(x_0^i)\Big] + \Big(1-\frac{\mathit{dt}}{t}\Big)\Big[\log\!\Big(1+\tfrac{\alpha_t x_m}{t}\Big) - \log\!\Big(1+\tfrac{\alpha_s x_m}{t-\mathit{dt}}\Big)\Big], \]</div>
+<p>which is <code>term_1_coef·(term_1_log_nr − term_1_log_dr) + term_2_coef·(term_2_log_nr − term_2_log_dr)</code>. In the derivation \(\alpha_s = 1-(t-\mathit{dt})\); the code sets <code>alpha_s = t - dt</code> (see <a href="#notes">issues</a>).</p>
+
+<h3 id="sedd">SEDDAbsorb</h3>
+<div class="classline"><span class="chip c-mask">class SEDDAbsorb(AbsorbingState)</span> algo.py:190</div>
+<p>SEDD learns the <b>concrete score</b> (ratios of marginals) instead of a clean-token distribution. The raw network output \(f_\theta\) is shifted so that, at initialisation, it already matches the scale of the true ratio, and the entry for the current token is pinned to \(\log 1 = 0\):</p>
+<div class="math">\[ \log s_\theta(x_t)_y = f_\theta(x_t)_y - \log\!\big(e^{\sigma_t}-1\big) - \log(V-1), \qquad \log s_\theta(x_t)_{x_t} = 0. \]</div>
+<p><b>Loss: denoising score entropy.</b> For a masked position with clean token \(x_0\), the only non-zero true ratio is \(q_{\text{ratio}} = 1/(e^{\sigma_t}-1)\) at \(y=x_0\) (<code>q_ratio</code>):</p>
+<div class="math">\[ \ell_i = d\sigma \Big[\; \underbrace{\sum_{y\neq m} s_\theta(x_t)_y}_{\texttt{pos\_term}} \;-\; \underbrace{q_{\text{ratio}} \log s_\theta(x_t)_{x_0}}_{\texttt{neg\_term}} \;+\; \underbrace{q_{\text{ratio}}(\log q_{\text{ratio}} - 1)}_{\texttt{const}} \;\Big],\qquad d\sigma = -\frac{d\alpha_t}{\alpha_t}\ (\texttt{dsigma}). \]</div>
+<p>This is a Bregman divergence between \(s_\theta\) and the true ratio, so it is minimised (at zero) exactly when \(s_\theta(x_t)_{x_0} = q_{\text{ratio}}\) and the score on other tokens is zero in expectation. Unmasked positions contribute 0.</p>
+<p><b>Sampler (<code>analytic</code>, Tweedie τ-leaping).</b> For a step from \(\sigma_t\) to \(\sigma_s\), \(d\sigma = \sigma_t-\sigma_s\), a masked position moves to token \(y\) with weight \((e^{d\sigma}-1)\,s_\theta(x_t)_y\) and keeps the remaining mass on <code>[MASK]</code> (<code>_staggered_score</code> × <code>_transp_transition</code>). The final <code>_denoiser_update</code> zeroes the mask column so every position is filled.</p>
+</section>
+
+<!-- ============================================================ -->
+<section class="part p-unif" id="uniform">
+<div class="eyebrow" style="color:var(--unif)">Family 3 · Uniform-state diffusion · t = 0 clean, t = 1 uniform random</div>
+<h2>Uniform diffusion and DUO</h2>
+<p><code>UniformState.q_xt</code> replaces a token by one drawn uniformly from the whole vocabulary (possibly itself):</p>
+<div class="math">\[ q(x_t\mid x_0) = \operatorname{Cat}\!\Big(\alpha_t\, e_{x_0} + \frac{1-\alpha_t}{V}\mathbf 1\Big). \]</div>
+<p>Unlike masking, a token can change several times during sampling, so the model can fix its own mistakes. The price is that the posterior and ELBO are more involved.</p>
+
+<h3 id="duobase">DUO_BASE: posterior and ELBO</h3>
+<div class="classline"><span class="chip c-unif">class DUO_BASE(UniformState)</span> algo.py:276</div>
+<p><b>Posterior</b> (<code>_compute_posterior</code>). For \(s&lt;t\), with <code>alpha_ts</code> \(\alpha_{ts}=\alpha_t/\alpha_s\) and <code>d_alpha</code> \(=\alpha_s-\alpha_t\), the exact posterior given a one-hot <code>x</code> (the clean \(e_{x_0}\) in training, \(x_\theta\) when sampling) is</p>
+<div class="math">\[ q(x_s\mid x_t, x) = \frac{V\alpha_t\, x\odot e_{x_t} + (\alpha_{ts}-\alpha_t)\,e_{x_t} + d_\alpha\,x + \frac{(1-\alpha_{ts})(1-\alpha_s)}{V}\mathbf 1}{V\alpha_t\, x_{x_t} + 1 - \alpha_t}. \]</div>
+<p>The ancestral sampler (<code>_ancestral_update</code>) plugs in <code>x = self.forward(x, sigma_t).exp()</code>, i.e. \(x \leftarrow x_\theta(x_t)\), optionally applies nucleus filtering, and samples. The four numerator terms read: stay at \(x_t\) because it was clean; stay at \(x_t\) because noise happened to land there; jump to the predicted clean token; jump anywhere.</p>
+
+<p><b>ELBO</b> (<code>nll_per_token</code>, "Eq. 5"). Define the noised marginals of the truth and the prediction,</p>
+<div class="math">\[ \bar x = V\alpha_t\, e_{x_0} + (1-\alpha_t)\mathbf 1, \qquad \underbrace{\bar x^\theta = V\alpha_t\, x_\theta(x_t) + (1-\alpha_t)\mathbf 1}_{\texttt{x\_bar\_theta}} . \]</div>
+<p>The per-token continuous-time NELBO is</p>
+<div class="math">\[ \ell = \underbrace{\frac{d\alpha_t}{V\alpha_t}}_{\texttt{coeff}}\left[\underbrace{\frac{V}{\bar x_{x_t}} - \frac{V}{\bar x^\theta_{x_t}}}_{\texttt{term1}} \;-\; \underbrace{\sum_{j=1}^{V} \frac{\bar x_j}{\bar x_{x_t}}\, \log\frac{\bar x^\theta_{x_t}\, \bar x_j}{\bar x^\theta_j\, \bar x_{x_t}}}_{\texttt{term2}}\right]. \]</div>
+<p>Because \(\bar x\) has only two distinct values, the code evaluates the sum over \(j\) in closed form, splitting on whether the noisy token equals the clean one (<code>x_eq_xt</code>): with \(c = \frac{1-\alpha_t}{V\alpha_t+1-\alpha_t}\) (<code>const</code>), the case \(x_t = x_0\) gives \(-c\big(\sum_j\log\bar x^\theta_j - V\log\bar x^\theta_{x_t}\big) + (V-1)\,c\log c\), and the case \(x_t\neq x_0\) adds the \(\frac{V\alpha_t}{1-\alpha_t}\log(\bar x^\theta_{x_0}/\bar x^\theta_{x_t})\) term. Code names: \(\bar x_{x_t}\) = <code>xbar_xt</code>, \(\bar x^\theta_{x_t}\) = <code>xbar_theta_xt</code>, \(\bar x^\theta_{x_0}\) = <code>xbar_theta_x</code>. Only <code>x_bar_theta.log().sum(-1)</code> touches all \(V\) entries.</p>
+
+<h3 id="duo">DUO: uniform diffusion is argmax of Gaussian diffusion</h3>
+<div class="classline"><span class="chip c-unif">class DUO(DUO_BASE)</span> algo.py:429</div>
+<p>DUO's key fact: run ordinary Gaussian diffusion on the one-hot vector and take the argmax. The result is <i>exactly</i> a uniform-state diffusion sample.</p>
+<div class="math">\[ x_t = \tilde\alpha_t\, e_{x_0} + \tilde\sigma_t\,\epsilon,\quad \epsilon\sim\mathcal N(0,I_V),\quad \tilde\alpha_t = \sqrt{\operatorname{sigmoid}(-\gamma_t)},\ \tilde\sigma_t = \sqrt{\operatorname{sigmoid}(\gamma_t)},\quad \gamma_t = \gamma_{\min} + t(\gamma_{\max}-\gamma_{\min}). \]
+<p>(<code>_q_xt_gaussian</code>; inside it \(\tilde\alpha_t,\tilde\sigma_t\) are the local variables <code>alpha_t</code>, <code>sigma_t</code>, renamed here so they don't clash with the discrete \(\alpha_t\).)</p></div>
+<p>By symmetry the hard token <code>xt_usdm</code> \(=\arg\max_k x_{t,k}\) equals \(x_0\) with some probability \(P\) and is otherwise uniform over the other \(V-1\) tokens, which is exactly the uniform-state \(q(x_t\mid x_0)\) with (<code>_gamma_to_alphat</code>)</p>
+<div class="math">\[ \alpha_t = \mathcal T(\gamma_t) = \frac{V\,P(\gamma_t) - 1}{V-1}, \qquad P(\gamma) = \Pr\big[\arg\max x_t = x_0\big] = \int \phi(z)\,\Phi\!\Big(z + \frac{\tilde\alpha}{\tilde\sigma}\Big)^{V-1} dz. \]</div>
+<p>The integral is pre-tabulated (<code>integral_cache</code>, built by <code>python -m flm.utils</code>), and the custom autograd function <code>Integral</code> looks up both \(P\) and \(dP/d\gamma\) so gradients flow through \(\alpha_t\).</p>
+
+<figure>
+<div class="canvas">
+<svg viewBox="0 0 700 200" role="img" aria-label="DUO: a one-hot vector plus Gaussian noise, then argmax, gives a uniform-diffusion token.">
+  <defs><marker id="mC" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="currentColor"/></marker></defs>
+  <!-- panel 1: one hot -->
+  <text x="30" y="22" class="t-head">clean one-hot  α̃·e<tspan dy="3" font-size="78%">x0</tspan><tspan dy="-3">​</tspan></text>
+  <line x1="30" y1="120" x2="166" y2="120" class="s-faint"/>
+  <rect x="34" y="118" width="16" height="2" class="f-muted"/><rect x="56" y="118" width="16" height="2" class="f-muted"/>
+  <rect x="78" y="56" width="16" height="64" class="f-unif"/>
+  <rect x="100" y="118" width="16" height="2" class="f-muted"/><rect x="122" y="118" width="16" height="2" class="f-muted"/><rect x="144" y="118" width="16" height="2" class="f-muted"/>
+  <text x="86" y="140" text-anchor="middle" class="t-sm">x</text>
+  <!-- arrow -->
+  <line x1="180" y1="100" x2="246" y2="100" class="s-line" marker-end="url(#mC)"/>
+  <text x="213" y="90" text-anchor="middle" class="t-sm">+ σ̃·ε</text>
+  <!-- panel 2: noisy -->
+  <text x="262" y="22" class="t-head">Gaussian latent  x<tspan dy="3" font-size="78%">t</tspan><tspan dy="-3">​</tspan></text>
+  <line x1="262" y1="120" x2="398" y2="120" class="s-faint"/>
+  <rect x="266" y="98" width="16" height="22" class="f-muted"/>
+  <rect x="288" y="120" width="16" height="16" class="f-muted"/>
+  <rect x="310" y="60" width="16" height="60" class="f-unif"/>
+  <rect x="332" y="84" width="16" height="36" class="f-muted"/>
+  <rect x="354" y="120" width="16" height="30" class="f-muted"/>
+  <rect x="376" y="106" width="16" height="14" class="f-muted"/>
+  <line x1="262" y1="60" x2="398" y2="60" class="s-line st-unif dash"/>
+  <text x="402" y="64" class="t-sm">max</text>
+  <!-- arrow -->
+  <line x1="430" y1="100" x2="496" y2="100" class="s-line" marker-end="url(#mC)"/>
+  <text x="463" y="90" text-anchor="middle" class="t-sm">argmax</text>
+  <!-- panel 3 -->
+  <text x="512" y="22" class="t-head">xt_usdm (hard token)</text>
+  <rect x="512" y="78" width="70" height="40" rx="4" class="n-unif"/><text x="547" y="103" text-anchor="middle" class="t-mono">x</text>
+  <text x="596" y="96" class="t-sm">w.p. P(γ<tspan dy="3" font-size="78%">t</tspan><tspan dy="-3">​</tspan>)</text>
+  <text x="596" y="112" class="t-sm">else uniform over</text>
+  <text x="596" y="126" class="t-sm">the other V−1</text>
+  <text x="30" y="178" class="t-sm">Curriculum (training only): the network sees softmax(x<tspan dy="3" font-size="78%">t</tspan><tspan dy="-3">​</tspan> / τ<tspan dy="3" font-size="78%">g</tspan><tspan dy="-3">​</tspan>) instead of one-hot(argmax x<tspan dy="3" font-size="78%">t</tspan><tspan dy="-3">​</tspan>); τ<tspan dy="3" font-size="78%">g</tspan><tspan dy="-3">​</tspan> anneals from 10^start to 10^end, then training switches to the plain discrete NELBO.</text>
+</svg>
+</div>
+<figcaption><b>Argmax turns Gaussian noise into uniform token noise.</b> The map \(\gamma\mapsto\alpha\) is \(\mathcal T\). This lets DUO borrow continuous tools (a low-variance relaxed input during training, deterministic noise coupling for distillation) while keeping a discrete model.</figcaption>
+</figure>
+
+<p><b>Training loss</b> (<code>DUO.nll</code>). While <code>global_step ≤ curriculum_end</code>:</p>
+<ol class="steps">
+<li>\(t\sim U\), \(\gamma_t\) as above, \(\alpha_t = \mathcal T(\gamma_t)\), and \(d\alpha_t \approx (\gamma_{\max}-\gamma_{\min})\cdot 1000\,[\mathcal T(\gamma_t+10^{-3})-\mathcal T(\gamma_t)]\) by finite difference.</li>
+<li>Sample \(x_t\). The network input is \(x_t/\tau_g\) (<code>xt * _compute_gumbel_tau_inverse()</code>), where \(\log_{10}\tau_g\) moves linearly from <code>gumbel_tau_log10_start</code> to <code>…_end</code> (so the input is a sharpening softmax relaxation of the one-hot argmax).</li>
+<li>The loss is the DUO_BASE NELBO evaluated at the hard token <code>xt_usdm</code> \(=\arg\max x_t\).</li>
+</ol>
+<p>After the curriculum (or at eval), it falls back to <code>Diffusion.nll</code> with discrete \(x_t\sim q(x_t\mid x_0)\) (<code>q_xt</code>). The prior term is \(\mathrm{KL}(q(x_1\mid x_0)\,\|\,\text{Unif})\) (<code>_prior_loss</code>, with \(\alpha_1\) = <code>alpha_1</code>):</p>
+<div class="math">\[ \mathcal L_{\text{prior}} = \Big(\alpha_1 + \tfrac{1-\alpha_1}{V}\Big)\log\big((V-1)\alpha_1+1\big) + \Big(1-\tfrac1V\Big)(1-\alpha_1)\log(1-\alpha_1). \]</div>
+
+<h3 id="distill">Distillation (discrete consistency distillation)</h3>
+<div class="classline"><span class="chip c-unif">class Distillation(DUO)</span> algo.py:537</div>
+<p>Goal: a few-step sampler. A frozen copy of the model (the teacher, refreshed every <code>update_teacher_every</code> steps from EMA or current weights) looks at a <i>slightly cleaner</i> version of the same noise realisation, and the student must match it from the noisier one. Using the same \(\varepsilon\) for both times is the point of the Gaussian view: it couples \(\hat x_s\) and \(\hat x_t\) deterministically.</p>
+<div class="math">\[ x_t = \tilde\alpha_t e_{x_0} + \tilde\sigma_t\epsilon,\quad x_s = \tilde\alpha_s e_{x_0} + \tilde\sigma_s\epsilon,\quad s = t-dt,\qquad \hat x_t = \arg\max x_t,\ \ \hat x_s = \arg\max x_s. \]
+<p>(<code>_sample_trajectory</code>; \(\hat x_t\), \(\hat x_s\) are <code>xt_discrete</code>, <code>xs_discrete</code>.)</p></div>
+<div class="math">\[ \ell_{\text{kl-fwd}} = \sum_v p^{T}_v\big(\log p^{T}_v - \log p^{S}_v\big),\qquad \ell_{\text{kl-bwd}} = \sum_v p^{S}_v\big(\log p^{S}_v - \log p^{T}_v\big), \]</div>
+<p>with \(\log p^T\) = <code>log_x_theta_teacher</code> \(=\log x_{\theta^-}(\hat x_s, s)\) and \(\log p^S\) = <code>log_x_theta_student</code> \(=\log x_\theta(\hat x_t, t)\). The gap grows over training so the student learns ever-larger jumps: <code>dt</code> \(= 2^{n}/T\) (<code>_compute_dt</code>) with \(n = \lfloor\text{step}/\texttt{update\_teacher\_every}\rfloor\), or linearly between <code>linear_growth_min</code> and <code>max</code>.</p>
+
+<h3 id="rect">Rectification</h3>
+<div class="classline"><span class="chip c-unif">class Rectification(DUO)</span> algo.py:670</div>
+<p>A rectified-flow analogue for uniform diffusion. Instead of independent uniform noise, training uses a <b>coupling</b> \((x_0, x_T)\): \(x_T\) is a paired "noise" sequence supplied by the data loader (for example, the starting point the model itself used to generate \(x_0\)). Each position takes the clean token with probability \(\alpha_t\) and the paired token <code>xT</code> otherwise (\(r\) = <code>random</code>):</p>
+<div class="math">\[ x_t^i = \begin{cases} x_0^i & r^i \le \alpha_t \\ x_T^i & r^i > \alpha_t \end{cases},\qquad r^i\sim U[0,1]\ \ (\text{or } U[g,1] \text{ when } \texttt{given\_t}=g). \]</div>
+<p>The loss is either the DUO_BASE NELBO or, with <code>use_simple_loss</code>, plain cross-entropy \(-\log x_\theta(x_t)_{x_0^i}\). With <code>onestep_mode</code>, <code>random</code> \(&gt;\alpha_t\) always, so \(x_t = x_T\) and the model learns the direct map \(x_T\mapsto x_0\). When no pair is given (eval), \(x_T\) is a fresh uniform prior sample, which recovers ordinary uniform diffusion.</p>
+</section>
+
+<!-- ============================================================ -->
+<section class="part p-flow" id="flm">
+<div class="eyebrow" style="color:var(--flow)">Family 4 · Flow matching on one-hots · t = 0 noise, t = 1 data</div>
+<h2>FLM: flow matching language model</h2>
+<div class="classline"><span class="chip c-flow">class FLM(FLMBase)</span> algo.py:1043</div>
+<p>FLM treats each position as a point in \(\mathbb R^V\) and learns the straight-line flow from Gaussian noise to the one-hot vector (<code>corrupt_continuous</code>):</p>
+<div class="math">\[ x_t = (1-t)\,\epsilon + t\, e_{x_1},\qquad \epsilon\sim\mathcal N(0, I_{L\times V})\ (\texttt{noise}),\qquad e_{x_1} = \texttt{target\_data}. \]</div>
+<p><b>Denoiser.</b> The network predicts the clean one-hot, i.e. a point on the simplex. Logits are soft-capped at ±30 before the softmax (<code>_process_model_output</code>):</p>
+<div class="math">\[ f = \log D_\theta(x_t,\tau_t) = \operatorname{log\,softmax}\!\Big(30\tanh\frac{\text{logits}}{30}\Big),\qquad D_\theta(x_t,\tau_t) \approx \mathbb E[e_{x_1}\mid x_t]. \]</div>
+<p><b>Loss.</b> Since \(e_{x_1}\) is one-hot, the target is a class label and the natural loss is cross-entropy, which is minimised by the posterior mean:</p>
+<div class="math">\[ \ell = -\sum_{k} \texttt{target\_data}_k\; f_k = -\log D_\theta(x_t,\tau_t)_{x_1}. \]</div>
+<p><b>Velocity.</b> Because \(\epsilon = (x_t - t e_{x_1})/(1-t)\), the flow-matching velocity \(\mathbb E[e_{x_1} - \epsilon\mid x_t]\) follows from the denoiser with no extra network:</p>
+<div class="math">\[ v = \frac{D_\theta(x_t,\tau_t) - x_t}{1-t}\qquad(\texttt{v = (x\_1\_pred\_probs - z) / (1 - t\_in)}). \]</div>
+<p><b>Learnable loss weighting.</b> With <code>learnable_loss_weighting</code>, a small network \(w(\tau_t)\) (<code>loss_weight</code>) rebalances noise levels via the uncertainty trick \(\tilde\ell = e^{-w(\tau_t)}\ell + w(\tau_t)\) (the optimum is \(w = \log\mathbb E[\ell\mid\tau_t]\), so all \(\tau\) contribute roughly equally).</p>
+
+<h3 id="tau">Time reparameterisation: τ is "how much has argmax decoded"</h3>
+<p>The network is not conditioned on \(t\). It is conditioned on \(\tau_t\) (<code>tau_t</code>): training samples \(\tau_t\sim U[\texttt{t\_min},\texttt{t\_max}]\), then maps to \(t\) with a spline lookup table (<code>_tau_to_t</code> = <code>utils.alpha_to_gamma</code>). \(\tau\) is the DUO signal level of \(\arg\max x_t\):</p>
+<div class="math">\[ \tau_t = \frac{V}{V-1}\Big(\Pr[\arg\max x_t = x_1] - \frac1V\Big),\qquad \Pr[\arg\max x_t = x_1] = \mathbb E_{z\sim\mathcal N(0,1)}\Big[\Phi\Big(z + \frac{t}{1-t}\Big)^{V-1}\Big], \]</div>
+<p>computed with Gauss–Hermite quadrature (<code>compute_alpha_exact</code>). So \(\tau\) is exactly the fraction of positions whose argmax is already correct, after removing chance. For a real vocabulary almost nothing happens for most of \(t\); then all tokens "snap" into place over a narrow window. Sampling \(\tau\) uniformly concentrates training where tokens are actually being decided.</p>
+
+<figure>
+<div class="canvas">
+<svg viewBox="0 0 560 310" role="img" aria-label="Plot of tau against t for vocabulary sizes 2, 1000 and 50257. For GPT-2's vocabulary, tau stays near 0 until t is about 0.6 and reaches 1 by t of about 0.88.">
+  <!-- grid -->
+  <g class="s-grid">
+    <line x1="60" y1="30" x2="520" y2="30"/><line x1="60" y1="87.5" x2="520" y2="87.5"/><line x1="60" y1="145" x2="520" y2="145"/><line x1="60" y1="202.5" x2="520" y2="202.5"/>
+    <line x1="175" y1="30" x2="175" y2="260"/><line x1="290" y1="30" x2="290" y2="260"/><line x1="405" y1="30" x2="405" y2="260"/><line x1="520" y1="30" x2="520" y2="260"/>
+  </g>
+  <line x1="60" y1="260" x2="520" y2="260" class="s-line st-muted"/>
+  <line x1="60" y1="30" x2="60" y2="260" class="s-line st-muted"/>
+  <g class="t-sm">
+    <text x="60" y="278" text-anchor="middle">0</text><text x="175" y="278" text-anchor="middle">0.25</text><text x="290" y="278" text-anchor="middle">0.5</text><text x="405" y="278" text-anchor="middle">0.75</text><text x="520" y="278" text-anchor="middle">1</text>
+    <text x="52" y="264" text-anchor="end">0</text><text x="52" y="206" text-anchor="end">0.25</text><text x="52" y="149" text-anchor="end">0.5</text><text x="52" y="91" text-anchor="end">0.75</text><text x="52" y="34" text-anchor="end">1</text>
+  </g>
+  <text x="290" y="302" text-anchor="middle" class="t">t  (weight on data in x<tspan dy="3" font-size="78%">t</tspan><tspan dy="-3">​</tspan>)</text>
+  <text x="16" y="145" text-anchor="middle" class="t" transform="rotate(-90 16 145)">τ  (decoded fraction)</text>
+  <polyline points="60.0,260.0 63.9,258.9 67.7,257.8 71.6,256.6 75.4,255.5 79.3,254.3 83.2,253.1 87.0,251.9 90.9,250.7 94.8,249.4 98.6,248.1 102.5,246.8 106.3,245.5 110.2,244.1 114.1,242.7 117.9,241.3 121.8,239.9 125.6,238.4 129.5,237.0 133.4,235.4 137.2,233.9 141.1,232.3 145.0,230.7 148.8,229.1 152.7,227.4 156.5,225.7 160.4,224.0 164.3,222.2 168.1,220.4 172.0,218.6 175.9,216.7 179.7,214.8 183.6,212.9 187.4,210.9 191.3,208.8 195.2,206.8 199.0,204.7 202.9,202.5 206.7,200.3 210.6,198.1 214.5,195.8 218.3,193.4 222.2,191.0 226.1,188.6 229.9,186.1 233.8,183.6 237.6,181.0 241.5,178.3 245.4,175.6 249.2,172.9 253.1,170.1 256.9,167.2 260.8,164.3 264.7,161.3 268.5,158.3 272.4,155.2 276.3,152.0 280.1,148.8 284.0,145.5 287.8,142.2 291.7,138.8 295.6,135.3 299.4,131.8 303.3,128.3 307.1,124.7 311.0,121.0 314.9,117.3 318.7,113.6 322.6,109.8 326.5,106.0 330.3,102.1 334.2,98.3 338.0,94.4 341.9,90.5 345.8,86.6 349.6,82.7 353.5,78.9 357.3,75.1 361.2,71.4 365.1,67.7 368.9,64.1 372.8,60.6 376.7,57.2 380.5,54.0 384.4,50.9 388.2,48.0 392.1,45.3 396.0,42.8 399.8,40.5 403.7,38.4 407.6,36.6 411.4,35.1 415.3,33.8 419.1,32.7 423.0,31.9 426.9,31.2 430.7,30.8 434.6,30.4 438.4,30.2 442.3,30.1 446.2,30.0 450.0,30.0 453.9,30.0 457.8,30.0 461.6,30.0 465.5,30.0 469.3,30.0 473.2,30.0 477.1,30.0 480.9,30.0 484.8,30.0 488.6,30.0 492.5,30.0 496.4,30.0 500.2,30.0 504.1,30.0 508.0,30.0 511.8,30.0 515.7,30.0 519.5,30.0" fill="none" class="st-muted" stroke-width="1.5" stroke-dasharray="4 3"/>
+  <polyline points="60.0,260.0 63.9,260.0 67.7,260.0 71.6,260.0 75.4,260.0 79.3,260.0 83.2,260.0 87.0,259.9 90.9,259.9 94.8,259.9 98.6,259.9 102.5,259.9 106.3,259.9 110.2,259.9 114.1,259.9 117.9,259.9 121.8,259.9 125.6,259.8 129.5,259.8 133.4,259.8 137.2,259.8 141.1,259.8 145.0,259.8 148.8,259.7 152.7,259.7 156.5,259.7 160.4,259.7 164.3,259.7 168.1,259.6 172.0,259.6 175.9,259.6 179.7,259.5 183.6,259.5 187.4,259.5 191.3,259.4 195.2,259.4 199.0,259.4 202.9,259.3 206.7,259.3 210.6,259.2 214.5,259.2 218.3,259.1 222.2,259.0 226.1,259.0 229.9,258.9 233.8,258.8 237.6,258.7 241.5,258.6 245.4,258.5 249.2,258.4 253.1,258.3 256.9,258.2 260.8,258.0 264.7,257.9 268.5,257.7 272.4,257.5 276.3,257.3 280.1,257.1 284.0,256.8 287.8,256.6 291.7,256.3 295.6,255.9 299.4,255.6 303.3,255.1 307.1,254.7 311.0,254.2 314.9,253.6 318.7,252.9 322.6,252.2 326.5,251.4 330.3,250.4 334.2,249.4 338.0,248.2 341.9,246.9 345.8,245.4 349.6,243.6 353.5,241.6 357.3,239.4 361.2,236.8 365.1,233.9 368.9,230.5 372.8,226.7 376.7,222.3 380.5,217.2 384.4,211.5 388.2,205.0 392.1,197.5 396.0,189.2 399.8,179.8 403.7,169.3 407.6,157.7 411.4,145.1 415.3,131.6 419.1,117.4 423.0,102.9 426.9,88.5 430.7,74.7 434.6,62.3 438.4,51.6 442.3,43.2 446.2,37.2 450.0,33.4 453.9,31.3 457.8,30.4 461.6,30.1 465.5,30.0 469.3,30.0 473.2,30.0 477.1,30.0 480.9,30.0 484.8,30.0 488.6,30.0 492.5,30.0 496.4,30.0 500.2,30.0 504.1,30.0 508.0,30.0 511.8,30.0 515.7,30.0 519.5,30.0" fill="none" class="st-unif" stroke-width="1.8"/>
+  <polyline points="60.0,260.0 63.9,260.0 67.7,260.0 71.6,260.0 75.4,260.0 79.3,260.0 83.2,260.0 87.0,260.0 90.9,260.0 94.8,260.0 98.6,260.0 102.5,260.0 106.3,260.0 110.2,260.0 114.1,260.0 117.9,260.0 121.8,260.0 125.6,260.0 129.5,260.0 133.4,260.0 137.2,260.0 141.1,260.0 145.0,260.0 148.8,260.0 152.7,260.0 156.5,260.0 160.4,260.0 164.3,260.0 168.1,260.0 172.0,260.0 175.9,260.0 179.7,260.0 183.6,260.0 187.4,260.0 191.3,260.0 195.2,260.0 199.0,260.0 202.9,260.0 206.7,260.0 210.6,260.0 214.5,260.0 218.3,260.0 222.2,260.0 226.1,260.0 229.9,260.0 233.8,260.0 237.6,259.9 241.5,259.9 245.4,259.9 249.2,259.9 253.1,259.9 256.9,259.9 260.8,259.9 264.7,259.9 268.5,259.9 272.4,259.9 276.3,259.9 280.1,259.9 284.0,259.8 287.8,259.8 291.7,259.8 295.6,259.8 299.4,259.7 303.3,259.7 307.1,259.7 311.0,259.6 314.9,259.6 318.7,259.5 322.6,259.4 326.5,259.3 330.3,259.3 334.2,259.1 338.0,259.0 341.9,258.8 345.8,258.6 349.6,258.4 353.5,258.1 357.3,257.7 361.2,257.3 365.1,256.7 368.9,256.0 372.8,255.2 376.7,254.2 380.5,252.9 384.4,251.3 388.2,249.3 392.1,246.8 396.0,243.7 399.8,239.8 403.7,234.9 407.6,228.8 411.4,221.1 415.3,211.8 419.1,200.3 423.0,186.6 426.9,170.3 430.7,151.7 434.6,131.2 438.4,109.6 442.3,88.2 446.2,68.6 450.0,52.6 453.9,41.2 457.8,34.4 461.6,31.3 465.5,30.3 469.3,30.0 473.2,30.0 477.1,30.0 480.9,30.0 484.8,30.0 488.6,30.0 492.5,30.0 496.4,30.0 500.2,30.0 504.1,30.0 508.0,30.0 511.8,30.0 515.7,30.0 519.5,30.0" fill="none" class="st-flow" stroke-width="2.6"/>
+  <text x="222" y="170" text-anchor="end" class="t-sm">V = 2</text>
+  <text x="376" y="196" text-anchor="end" style="fill:var(--unif)" class="t-mono-sm">V = 1,000</text>
+  <text x="446" y="140" style="fill:var(--flow)" class="t-mono-sm">V = 50,257</text>
+  <text x="446" y="154" class="t-sm">(GPT-2)</text>
+</svg>
+</div>
+<figcaption><b>Computed from <code>utils.compute_alpha_exact</code>, not sketched.</b> With the GPT-2 vocabulary, \(\tau&lt;0.01\) until \(t\approx0.63\) and \(\tau&gt;0.99\) after \(t\approx0.88\). A sampler with uniform steps in \(t\) would waste most of its steps; FLM spaces both training times and sampling steps uniformly in \(\tau\).</figcaption>
+</figure>
+
+<h4>Sampling (Euler, uniform in τ)</h4>
+<div class="algo-step">z ~ N(0, I)                                  # t = 0
+for τ_i in linspace(0, 1, N+1)[:-1]:
+    t_i, t_{i+1} = t(τ_i), t(τ_{i+1})
+    D = D_θ(z, τ_i)
+    if last step:  z = D ; break           # jump straight to the prediction
+    z = z + (t_{i+1} − t_i) · (D − z) / (1 − t_i)
+return argmax_k z</div>
+</section>
+
+<!-- ============================================================ -->
+<section class="part p-flow" id="fmlm">
+<div class="eyebrow" style="color:var(--flow)">Family 4 · Flow maps · t = 0 noise, t = 1 data</div>
+<h2>FMLM: flow map language model</h2>
+<div class="classline"><span class="chip c-flow">class FMLM(FLMBase)</span> algo.py:1103</div>
+<p>FLM needs many Euler steps because each step follows the local velocity. A <b>flow map</b> \(X_{st}\) instead jumps directly from \(x_s\) to where the ODE trajectory would be at time \(t\). FMLM parameterises it through a two-time denoiser \(D_{st}(x)\) (the backbone gets both \(\tau_s\) and \(\tau_t\) through <code>double_temb</code>):</p>
+<div class="math">\[ X_{st}(x_s) = \frac{1-t}{1-s}\,x_s + \frac{t-s}{1-s}\,D_{st}(x_s),\qquad D_{st}(x_s) = \exp\big(\texttt{forward(x\_s, tau\_s, tau\_t)}\big). \]</div>
+<p>This form has three useful properties. At \(t=s\) it is the identity, and \(D_{ss}(x)\) is just the FLM denoiser. At \(t=1\) it returns \(D_{s1}(x_s)\), a one-step generator. And for small \(t-s\) it is one Euler step, since \(X_{st}\approx x_s + (t-s)v_s\).</p>
+
+<figure>
+<div class="canvas">
+<svg viewBox="0 0 640 260" role="img" aria-label="Flow map geometry: X_st lies on the straight segment from x_s to the denoiser output D, at fraction (t-s)/(1-s), and should land on the true ODE trajectory at time t.">
+  <defs><marker id="mE" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="currentColor"/></marker></defs>
+  <!-- true trajectory -->
+  <path d="M70 210 C 140 150, 200 170, 262 140 S 420 80, 560 96" class="s-line st-muted" stroke-width="2"/>
+  <text x="566" y="100" class="t-sm">trajectory → x₁</text>
+  <!-- segment x_s -> D -->
+  <line x1="70" y1="210" x2="530" y2="36" class="s-line st-flow dash"/>
+  <circle cx="70" cy="210" r="5" class="f-fg"/><text x="60" y="232" class="t">x<tspan dy="3" font-size="78%">s</tspan><tspan dy="-3">​</tspan></text>
+  <circle cx="530" cy="36" r="5" class="f-flow"/><text x="430" y="28" class="t" style="fill:var(--flow)">D<tspan dy="3" font-size="78%">st</tspan><tspan dy="-3">​</tspan>(x<tspan dy="3" font-size="78%">s</tspan><tspan dy="-3">​</tspan>)</text><text x="430" y="44" class="t-sm">on the simplex</text>
+  <circle cx="254" cy="140" r="6" fill="none" class="st-accent" stroke-width="2.2"/>
+  <circle cx="254" cy="140" r="2.5" class="f-accent"/>
+  <text x="196" y="122" class="t" style="fill:var(--accent)">X<tspan dy="3" font-size="78%">st</tspan><tspan dy="-3">​</tspan>(x<tspan dy="3" font-size="78%">s</tspan><tspan dy="-3">​</tspan>) ≈ x<tspan dy="3" font-size="78%">t</tspan><tspan dy="-3">​</tspan></text>
+  <!-- fraction bracket -->
+  <path d="M78 228 L 260 158" class="s-line st-muted" stroke-width="1"/>
+  <text x="146" y="214" class="t-sm" transform="rotate(-21 146 214)">fraction (t−s)/(1−s)</text>
+</svg>
+</div>
+<figcaption><b>What the network outputs and where the jump lands.</b> The flow map moves from \(x_s\) toward the predicted endpoint \(D\) by the fraction \((t-s)/(1-s)\). Training makes that point coincide with the true trajectory at time \(t\) (grey). FLM's Euler step is the same picture with \(D\) evaluated only at \(s\).</figcaption>
+</figure>
+
+<h4>Which \((s,t)\) pairs are trained</h4>
+<div class="split">
+<div>
+<p>Each batch is split by <code>_get_split_indices</code> (deterministically across GPUs) into three groups:</p>
+<ul>
+<li><b>Diagonal</b> (<code>diagonal_fraction</code>): \(s=t\). Target is the frozen FLM teacher's soft prediction \(D^{T}(x_s,\tau_s)\), or the one-hot \(e_{x_1}\) with no teacher. Loss is cross-entropy.</li>
+<li><b>Boundary</b> (share \((1-f)/\texttt{boundary\_prob}\)): \(s=0, t=1\), the one-step map itself.</li>
+<li><b>Off-diagonal</b> (the rest): \(s&lt;t\), drawn either as two sorted uniforms (<code>uniform_st</code>) or as \(d\sim U,\ s\sim U\cdot(1-d),\ t=s+d\) (<code>uniform_diff</code>). Target comes from one of three self-distillation rules below.</li>
+</ul>
+<p>All times are drawn in \(\tau\) and mapped to \(t\). The student is initialised from the teacher, with the last layer of the second time embedding zeroed, so at step 0 \(D_{st}(x) = D^T(x,s)\).</p>
+</div>
+<figure class="narrow">
+<div class="canvas">
+<svg viewBox="0 0 300 290" role="img" aria-label="The (tau_s, tau_t) training region: the diagonal, the upper triangle of off-diagonal pairs, and the boundary corner at s=0, t=1.">
+  <polygon points="50,250 50,20 280,20" class="ctl"/>
+  <line x1="50" y1="250" x2="280" y2="250" class="s-line st-muted"/>
+  <line x1="50" y1="250" x2="50" y2="20" class="s-line st-muted"/>
+  <line x1="50" y1="250" x2="280" y2="20" class="st-accent" stroke-width="3"/>
+  <circle cx="50" cy="20" r="7" class="f-flow"/>
+  <text x="62" y="24" class="t-sm">boundary (0, 1)</text>
+  <text x="100" y="90" class="t" style="fill:var(--flow)">off-diagonal</text>
+  <text x="100" y="106" class="t-sm">s &lt; t, self-distilled</text>
+  <text x="196" y="158" class="t" style="fill:var(--accent)" transform="rotate(-45 196 158)">diagonal s = t</text>
+  <g class="t-sm"><text x="50" y="266" text-anchor="middle">0</text><text x="280" y="266" text-anchor="middle">1</text><text x="42" y="254" text-anchor="end">0</text><text x="42" y="24" text-anchor="end">1</text></g>
+  <text x="165" y="284" text-anchor="middle" class="t">τ<tspan dy="3" font-size="78%">s</tspan><tspan dy="-3">​</tspan></text>
+  <text x="20" y="140" text-anchor="middle" class="t" transform="rotate(-90 20 140)">τ<tspan dy="3" font-size="78%">t</tspan><tspan dy="-3">​</tspan></text>
+</svg>
+</div>
+<figcaption>Training region in \((\tau_s,\tau_t)\).</figcaption>
+</figure>
+</div>
+
+<p>The three distillation methods differ only in how they build the off-diagonal target. Each one is a different identity that the exact flow map satisfies, rewritten in terms of \(D\).</p>
+
+<h3 id="psd">PSD: progressive / semigroup distillation</h3>
+<p><b>Identity:</b> two jumps equal one jump, \(X_{st} = X_{ut}\circ X_{su}\) for any \(s&lt;u&lt;t\). Take \(u\) at the \(\tau\)-midpoint (or random, <code>set_midpoint</code>). Substituting the parameterisation on both sides and solving for \(D_{s,t}\):</p>
+<div class="math">\[ \underbrace{D^\star_{st}}_{\texttt{offdiag\_target}} = \lambda_{sut}\, D_{su}(x_s) + (1-\lambda_{sut})\, D_{ut}\big(X_{su}(x_s)\big),\qquad \lambda_{sut} = \frac{(1-t)(u-s)}{(1-u)(t-s)}. \]</div>
+<p>(The weights sum to one because \((1-t)(u-s) + (t-u)(1-s) = (1-u)(t-s)\), so the target stays on the simplex.) Both hops use the current model under <code>no_grad</code> (or its EMA with <code>use_ema_for_psd_target</code>). Loss is cross-entropy \(-\sum_k \operatorname{sg}(D^\star)_k\log D_{st}(x_s)_k\) or, with <code>use_mse_loss_psd</code>, squared error, optionally scaled by \(\big(\tfrac{t-s}{1-s}\big)^2\) (the factor that converts a \(D\)-error into an \(X\)-error).</p>
+
+<figure>
+<div class="canvas">
+<svg viewBox="0 0 680 200" role="img" aria-label="PSD: the student's single jump from s to t is trained to match two half jumps s to u and u to t made by the current model.">
+  <defs>
+    <marker id="mF1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" class="f-muted"/></marker>
+    <marker id="mF2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" class="f-accent"/></marker>
+  </defs>
+  <line x1="60" y1="172" x2="620" y2="172" class="s-line st-muted"/>
+  <g class="t-mono"><text x="100" y="190" text-anchor="middle">s</text><text x="340" y="190" text-anchor="middle">u</text><text x="580" y="190" text-anchor="middle">t</text></g>
+  <g class="s-faint"><line x1="100" y1="168" x2="100" y2="176"/><line x1="340" y1="168" x2="340" y2="176"/><line x1="580" y1="168" x2="580" y2="176"/></g>
+  <circle cx="100" cy="130" r="5" class="f-fg"/><text x="88" y="152" class="t">x<tspan dy="3" font-size="78%">s</tspan><tspan dy="-3">​</tspan></text>
+  <circle cx="340" cy="96" r="5" class="f-muted"/>
+  <circle cx="580" cy="110" r="5" class="f-muted"/>
+  <path d="M106 127 L 333 99" class="s-line st-muted" stroke-width="1.8" marker-end="url(#mF1)"/>
+  <path d="M347 98 L 573 109" class="s-line st-muted" stroke-width="1.8" marker-end="url(#mF1)"/>
+  <text x="200" y="104" class="t-sm">X<tspan dy="3" font-size="78%">su</tspan><tspan dy="-3">​</tspan>  (no grad)</text>
+  <text x="430" y="94" class="t-sm">X<tspan dy="3" font-size="78%">ut</tspan><tspan dy="-3">​</tspan>  (no grad)</text>
+  <path d="M104 136 C 250 200, 450 190, 574 116" class="s-line st-accent dash" stroke-width="2" marker-end="url(#mF2)"/>
+  <text x="340" y="152" text-anchor="middle" class="t" style="fill:var(--accent)">student X<tspan dy="3" font-size="78%">st</tspan><tspan dy="-3">​</tspan>: one jump, must land on the same point</text>
+  <text x="60" y="30" class="t-sm">target in D-space:  D* = λ·D<tspan dy="3" font-size="78%">su</tspan><tspan dy="-3">​</tspan>(x<tspan dy="3" font-size="78%">s</tspan><tspan dy="-3">​</tspan>) + (1−λ)·D<tspan dy="3" font-size="78%">ut</tspan><tspan dy="-3">​</tspan>(X<tspan dy="3" font-size="78%">su</tspan><tspan dy="-3">​</tspan>(x<tspan dy="3" font-size="78%">s</tspan><tspan dy="-3">​</tspan>))</text>
+</svg>
+</div>
+<figcaption><b>Self-consistency through composition.</b> Short jumps are learned first (they are close to the diagonal), and longer jumps inherit their accuracy by composing two shorter ones.</figcaption>
+</figure>
+
+<h3 id="esd">ESD: Eulerian self-distillation</h3>
+<p><b>Identity:</b> the destination does not change if you slide the start point along the trajectory. With \(x_s\) moving at velocity \(v_s\):</p>
+<div class="math">\[ \frac{d}{ds}X_{st}(x_s) = \partial_s X_{st} + \big(\nabla_x X_{st}\big)\,v_s(x_s) = 0. \]</div>
+<p>Plugging in the parameterisation and \(v_s = (D_s - x_s)/(1-s)\), where \(D_s\) is the teacher's instantaneous denoiser, the \(x_s\) terms cancel and we get a fixed-point equation for \(D\):</p>
+<div class="math">\[ D^\star_{st} = D_s + \underbrace{\frac{(1-s)(t-s)}{1-t}}_{\texttt{coeff}}\;\underbrace{\frac{d}{ds}D_{st}(x_s)}_{\texttt{d\_ds\_D\_st}}. \]</div>
+<p>The total derivative is one forward-mode JVP (<code>torch.func.jvp</code>, with the custom <code>jvp_attn</code> kernel) of \((\tau_s, x_s)\mapsto \log D_\theta\) along the tangent \(\big(\tfrac{d\tau_s}{ds},\ \tfrac{D_s - x_s}{1-s}\big)\), then \(\tfrac{d}{ds}D = D\odot\tfrac{d}{ds}\log D\). Loss is \(\big\|D_{st}(x_s) - \operatorname{sg}(D^\star)\big\|^2\) summed over the vocabulary.</p>
+
+<h3 id="lsd">LSD: Lagrangian self-distillation</h3>
+<p><b>Identity:</b> the endpoint moves with the flow. Differentiating in the <i>end</i> time:</p>
+<div class="math">\[ \partial_t X_{st}(x_s) = v_t\big(X_{st}(x_s)\big) = \frac{D_t(X_{st}) - X_{st}}{1-t}. \]</div>
+<p>Solving for \(D\) in the same way:</p>
+<div class="math">\[ D^\star_{st} = \underbrace{D_t\big(X_{st}(x_s)\big)}_{\texttt{D\_t\_\_X\_st}} - \frac{(t-s)(1-t)}{1-s}\;\underbrace{\partial_t D_{st}(x_s)}_{\texttt{partial\_t\_D\_st}}. \]</div>
+<p>Here the JVP is with respect to \(\tau_t\) only (tangent 1), multiplied by \(d\tau/dt\) via the chain rule. \(D_t\) is the teacher (<code>use_teacher_for_D_t_lsd</code>) or the student's own diagonal. Because subtracting a derivative can push \(D^\star\) off the simplex, the target is projected back with α-entmax (<code>entmax_temp_lsd</code> ∈ [1, 2]; 1 = softmax, 2 = sparsemax), and the loss is cross-entropy.</p>
+
+<figure>
+<div class="canvas">
+<svg viewBox="0 0 780 240" role="img" aria-label="ESD perturbs the start time along the trajectory and requires the endpoint to stay fixed; LSD perturbs the end time and requires the endpoint to move with the flow velocity.">
+  <defs>
+    <marker id="mG" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" class="f-accent"/></marker>
+    <marker id="mG2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" class="f-flow"/></marker>
+  </defs>
+  <text x="20" y="22" class="t-head">ESD · Eulerian (vary s)</text>
+  <path d="M30 200 C 110 150, 190 160, 250 110 S 330 60, 360 56" class="s-line st-muted" stroke-width="1.6"/>
+  <circle cx="92" cy="166" r="5" class="f-fg"/><text x="70" y="190" class="t-mono-sm">s</text>
+  <circle cx="140" cy="155" r="5" class="f-fg"/><text x="136" y="180" class="t-mono-sm">s+ds</text>
+  <circle cx="330" cy="62" r="6" class="f-accent"/><text x="300" y="44" class="t-mono-sm">X<tspan dy="3" font-size="78%">st</tspan><tspan dy="-3">​</tspan></text>
+  <path d="M97 162 C 160 110, 250 80, 322 64" class="s-line st-accent" stroke-width="1.6" marker-end="url(#mG)"/>
+  <path d="M145 151 C 200 115, 260 85, 322 66" class="s-line st-accent dash" stroke-width="1.6" marker-end="url(#mG)"/>
+  <text x="20" y="226" class="t-sm">same destination from both starts ⇒ d/ds X<tspan dy="3" font-size="78%">st</tspan><tspan dy="-3">​</tspan>(x<tspan dy="3" font-size="78%">s</tspan><tspan dy="-3">​</tspan>) = 0</text>
+
+  <text x="420" y="22" class="t-head">LSD · Lagrangian (vary t)</text>
+  <path d="M430 200 C 510 150, 590 160, 650 110 S 730 60, 760 56" class="s-line st-muted" stroke-width="1.6"/>
+  <circle cx="460" cy="182" r="5" class="f-fg"/><text x="446" y="204" class="t-mono-sm">s</text>
+  <circle cx="680" cy="86" r="6" class="f-accent"/><text x="606" y="74" class="t-mono-sm">X<tspan dy="3" font-size="78%">st</tspan><tspan dy="-3">​</tspan></text>
+  <circle cx="722" cy="66" r="4" class="f-muted"/><text x="716" y="54" class="t-mono-sm">t+dt</text>
+  <path d="M465 178 C 540 140, 610 110, 673 89" class="s-line st-accent" stroke-width="1.6" marker-end="url(#mG)"/>
+  <line x1="686" y1="83" x2="736" y2="60" class="s-line st-flow" stroke-width="2.4" marker-end="url(#mG2)"/>
+  <text x="700" y="110" class="t-sm" style="fill:var(--flow)">v<tspan dy="3" font-size="78%">t</tspan><tspan dy="-3">​</tspan>(X)</text>
+  <text x="420" y="226" class="t-sm">endpoint must move with the flow ⇒ ∂<tspan dy="3" font-size="78%">t</tspan><tspan dy="-3">​</tspan> X<tspan dy="3" font-size="78%">st</tspan><tspan dy="-3">​</tspan> = v<tspan dy="3" font-size="78%">t</tspan><tspan dy="-3">​</tspan>(X<tspan dy="3" font-size="78%">st</tspan><tspan dy="-3">​</tspan>)</text>
+</svg>
+</div>
+<figcaption><b>Two ways to differentiate the same flow map.</b> ESD needs the teacher's velocity at the start point and a JVP through both \(x_s\) and \(\tau_s\). LSD needs one extra forward pass at the landing point and a JVP through \(\tau_t\) only.</figcaption>
+</figure>
+
+<div class="tbl"><table>
+<thead><tr><th></th><th>PSD</th><th>ESD</th><th>LSD</th></tr></thead>
+<tbody>
+<tr><td>Identity used</td><td>\(X_{st}=X_{ut}\circ X_{su}\)</td><td>\(\tfrac{d}{ds}X_{st}(x_s)=0\)</td><td>\(\partial_t X_{st}=v_t(X_{st})\)</td></tr>
+<tr><td>Extra passes</td><td>2 forward (no grad)</td><td>1 teacher + 1 JVP</td><td>1 JVP + 1 forward at \(X_{st}\)</td></tr>
+<tr><td>Off-diagonal loss</td><td>CE or MSE</td><td>MSE</td><td>CE after entmax projection</td></tr>
+<tr><td>Needs <code>jvp_attn</code></td><td>no</td><td>yes</td><td>yes</td></tr>
+</tbody></table></div>
+
+<h3 id="fmlm-sample">Sampling with a flow map (optional stochasticity γ)</h3>
+<p>With \(\gamma = 0\) the sampler just chains flow-map jumps on a \(\tau\)-uniform grid, \(z \leftarrow X_{t_i,t_{i+1}}(z)\), and returns \(D\) on the last step. With \(\gamma&gt;0\) it jumps <i>past</i> the target noise level and re-injects fresh noise. Writing \(\sigma = 1-t\) for the noise coefficient and \(\sigma_{\text{target}} = 1-t_{i+1}\):</p>
+<div class="math">\[ \tilde\sigma = \sigma_{\text{target}}\sqrt{1-\gamma^2},\quad \tilde t = 1-\tilde\sigma,\qquad \tilde z = X_{t_i,\tilde t}(z),\qquad z \leftarrow \tilde z + (\tilde\sigma - \sigma_{\text{target}})\,D + \gamma\,\sigma_{\text{target}}\,\xi,\ \ \xi\sim\mathcal N(0,I). \]</div>
+<p>If \(\tilde z \approx \tilde t\, e_x + \tilde\sigma\,\varepsilon\) and \(D\approx e_x\), the new state has data weight \(\tilde t + \tilde\sigma - \sigma_{\text{target}} = t_{i+1}\) and noise std \(\sqrt{\tilde\sigma^2 + \gamma^2\sigma_{\text{target}}^2} = \sigma_{\text{target}}\), i.e. exactly the marginal at \(t_{i+1}\). \(\gamma\) trades determinism for error correction.</p>
+</section>
+
+<!-- ============================================================ -->
+<section class="part p-flow" id="twomodel">
+<div class="eyebrow" style="color:var(--flow)">Family 4 · Appendix variants · t = 0 noise, t = 1 data</div>
+<h2>Two-model and two-stage flow maps</h2>
+
+<h3>FMLM_TwoModel: velocity plus learned curvature</h3>
+<div class="classline"><span class="chip c-flow">class FMLM_TwoModel(FLMBase)</span> algo.py:1639</div>
+<p>Here the flow map is a second-order Taylor step. The velocity comes from the <b>frozen FLM teacher</b>, and a second network \(g_\theta\) (raw output, no softmax, last layer zero-initialised so it starts at 0) learns the correction:</p>
+<div class="math">\[ X_{st}(x_s) = x_s + dt\,\hat v_s + \tfrac12 dt^2\, g_\theta(x_s,s,t),\qquad dt = t-s,\quad \hat v_s = \frac{f^\theta_s - x_s}{1-s},\quad f^\theta_s = D^T(x_s,\tau_s). \]</div>
+<p><b>Bootstrap target.</b> Split \([s,t]\) at the \(\tau\)-midpoint \(u\) (<code>t_mid</code>), with \(dt_1 = u-s\) (<code>dt_half_1</code>) and \(dt_2 = t-u\) (<code>dt_half_2</code>). Take two half-steps with the current model (no grad), average their velocities, and extrapolate to \(t=1\). Code names: \(\hat v_{su}\) = <code>v_s_u_hat</code>, \(F_{su}\) = <code>large_f_s_u</code>, \(\hat v_{ut}\) = <code>v_u_t_hat</code>, \(\hat v\) = <code>v_hat</code>.</p>
+<div class="math">\[ \begin{aligned}
+\hat v_{su} &= \hat v_s + \tfrac12 dt_1\, g_\theta(x_s,s,u), & F_{su} &= x_s + dt_1\,\hat v_s + \tfrac12 dt_1^2\, g_\theta(x_s,s,u),\\
+\hat v_{ut} &= \hat v_u(F_{su}) + \tfrac12 dt_2\, g_\theta(F_{su},u,t), & \hat v &= \frac{dt_1\,\hat v_{su} + dt_2\,\hat v_{ut}}{dt},\\
+x_{\text{boot}} &= \operatorname{sg}\big(x_s + (1-s)\,\hat v\big). &&
+\end{aligned} \]</div>
+<p>The student's own average velocity \(\hat v_s + \tfrac12 dt\, g_\theta(x_s,s,t)\), extrapolated the same way, is \(f^\theta_s + \tfrac12 dt(1-s)\,g_\theta(x_s,s,t)\) (<code>f_final = f_final_fm + weight * f_final_sc</code>). The loss is the squared error in endpoint space, summed over the vocabulary:</p>
+<div class="math">\[ \ell = \big\|\underbrace{x_{\text{boot}} - f^\theta_s - \tfrac12 dt(1-s)\,g_\theta(x_s,s,t)}_{\texttt{error}}\big\|^2 = V\cdot\operatorname{mean}_k\,\texttt{error}_k^2 . \]</div>
+<p>With <code>add_boundary</code>, a fraction \(1/\texttt{boundary\_prob}\) of the batch uses \(\tau_s=0\), <code>d_tau</code> \(=1\). Sampling is the Taylor step \(z\leftarrow z + dt\, v(z) + \tfrac12 dt^2 g_\theta(z,s,t)\), which costs two network calls per step (teacher + \(g\)).</p>
+
+<figure>
+<div class="canvas">
+<svg viewBox="0 0 700 230" role="img" aria-label="TwoModel bootstrap: two curved half steps from s to u to t define an average velocity, which is extended to t equals 1 to form the target; the student predicts the same endpoint from one evaluation.">
+  <defs>
+    <marker id="mI" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" class="f-muted"/></marker>
+    <marker id="mI2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" class="f-accent"/></marker>
+  </defs>
+  <line x1="60" y1="200" x2="680" y2="200" class="s-line st-muted"/>
+  <g class="t-mono"><text x="80" y="218" text-anchor="middle">s</text><text x="300" y="218" text-anchor="middle">u</text><text x="520" y="218" text-anchor="middle">t</text><text x="650" y="218" text-anchor="middle">1</text></g>
+  <circle cx="80" cy="160" r="5" class="f-fg"/><text x="64" y="182" class="t">x<tspan dy="3" font-size="78%">s</tspan><tspan dy="-3">​</tspan></text>
+  <path d="M85 157 Q 190 110, 294 124" class="s-line st-muted" stroke-width="1.8" marker-end="url(#mI)"/>
+  <circle cx="300" cy="124" r="5" class="f-muted"/><text x="284" y="146" class="t-mono-sm">F<tspan dy="3" font-size="78%">su</tspan><tspan dy="-3">​</tspan></text>
+  <path d="M306 122 Q 410 104, 514 112" class="s-line st-muted" stroke-width="1.8" marker-end="url(#mI)"/>
+  <circle cx="520" cy="112" r="5" class="f-muted"/>
+  <text x="120" y="112" class="t-sm">v<tspan dy="3" font-size="78%">s</tspan><tspan dy="-3">​</tspan> + ½dt₁ g(x<tspan dy="3" font-size="78%">s</tspan><tspan dy="-3">​</tspan>, s, u)</text>
+  <text x="352" y="96" class="t-sm">v<tspan dy="3" font-size="78%">u</tspan><tspan dy="-3">​</tspan> + ½dt₂ g(F<tspan dy="3" font-size="78%">su</tspan><tspan dy="-3">​</tspan>, u, t)</text>
+  <line x1="80" y1="160" x2="650" y2="88" class="s-line st-accent dash" stroke-width="1.6" marker-end="url(#mI2)"/>
+  <circle cx="650" cy="88" r="6" class="f-accent"/>
+  <text x="560" y="60" class="t" style="fill:var(--accent)">x<tspan dy="3" font-size="78%">boot</tspan><tspan dy="-3">​</tspan> (target)</text>
+  <text x="440" y="40" class="t-sm">slope = v_hat (average of the two half-steps)</text>
+  <circle cx="650" cy="112" r="5" fill="none" class="st-flow" stroke-width="2"/>
+  <text x="560" y="140" class="t-sm" style="fill:var(--flow)">student: f_theta_s + ½dt(1−s)g<tspan dy="3" font-size="78%">θ</tspan><tspan dy="-3">​</tspan></text>
+</svg>
+</div>
+<figcaption><b>Bootstrapping the curvature network.</b> The two half-steps (grey) are cheap to trust because shorter steps are more accurate; their average slope, extrapolated to \(t=1\), is the target. The student (teal ring) is pulled onto it.</figcaption>
+</figure>
+
+<h3>FMLM_TwoStage: compress the two models into one</h3>
+<div class="classline"><span class="chip c-flow">class FMLM_TwoStage(FLMBase)</span> algo.py:1798</div>
+<p>Stage two removes the extra network. Two frozen teachers, FLM (<code>teacher_model_f</code>, giving \(v_f\)) and a trained TwoModel (<code>teacher_model_g</code>, giving <code>f_final_g</code>), define the target jump, and a single FMLM-style student with the \(D\)-parameterisation must reproduce it:</p>
+<div class="math">\[ F_{st} = x_s + dt\, v_f + \tfrac12 dt^2\, \texttt{f\_final\_g}, \qquad F^{\text{distilled}}_{st} = x_s + dt\,\underbrace{\frac{D_{st}(x_s) - x_s}{1-s}}_{\texttt{student\_v}}, \qquad \ell = \big\|F_{st} - F^{\text{distilled}}_{st}\big\|^2 . \]</div>
+<p>After training, sampling is identical to FMLM (one network call per step, same optional \(\gamma\) noise).</p>
+</section>
+
+<!-- ============================================================ -->
+<section class="part" id="notes">
+<div class="eyebrow">From deriving the losses against the code</div>
+<h2>Issues found in the code</h2>
+<p>Writing out the math exposed a few places where the code and the derivation disagree. None are fixed here; they are listed so you can check them.</p>
+
+<div class="box bug"><span class="label">Likely bug · algo.py:168</span>
+<b>D3PMAbsorb uses the wrong \(\alpha_s\).</b> <code>alpha_s = t - dt</code>, but for the log-linear schedule \(\alpha_s = 1-s = 1-(t-dt)\). The derivation above needs \(\log(1 + \alpha_s x_m/(t-dt))\). As written, <code>term_2_log_dr</code> reduces to \(\log(1+x_m)\). This only matters when the model puts mass on <code>[MASK]</code> (<code>subs_masking=False</code>).
+</div>
+
+<div class="box bug"><span class="label">Crash · algo.py:1179</span>
+<b><code>utils.d_alpha_by_d_gamma</code> does not exist.</b> <code>FMLM._d_tau_by_d_t</code> calls it, and both ESD and LSD use that method for the chain-rule factor \(d\tau/dt\). Any FMLM run with <code>distillation_method</code> ESD or LSD should raise <code>AttributeError</code> on the first off-diagonal batch. PSD is unaffected. The spline already supports it: <code>lut_g2a.derivative()(t)</code>.
+</div>
+
+<div class="box bug"><span class="label">Inconsistent conditioning · algo.py:1414, 1436</span>
+<b>ESD passes raw \(t\) where the network expects \(\tau\).</b> The ESD diagonal branch calls <code>self.forward(x_s[idx_diag], s[idx_diag], t[idx_diag])</code>, whereas PSD and LSD pass <code>tau_s, tau_t</code>. Also, when no teacher is used, ESD's "instantaneous" \(D_s\) is computed as <code>forward(x_s, tau_s, tau_t)</code>, which is the two-time \(D_{s,t}\), not \(D_{s,s}\).
+</div>
+
+<div class="box bug"><span class="label">Silent failure · algo.py:558, 654</span>
+<b>Distillation accepts loss types it doesn't implement.</b> Validation allows <code>"posterior"</code> and <code>"kl-posterior"</code>, but <code>nll</code> only handles <code>kl-fwd</code> and <code>kl-bwd</code> and returns <code>None</code> otherwise.
+</div>
+
+<div class="box"><span class="label">No-op · algo.py:829</span>
+In <code>FLMBase._loss</code>, the <code>ignore_bos</code> branch assigns <code>loss[:, 1:] = loss[:, 1:]</code>, which changes nothing, so the BOS token is still counted.
+</div>
+</section>
+
+</main>
+</div>
+
+</body>
+</html>

@@ -66,10 +66,6 @@ class AR(trainer_base.TrainerBase):
             x[:, i + 1] = y
         return x
 
-    def _process_sigma(self, sigma):
-        del sigma
-        return None
-
 
 class MDLM(trainer_base.AbsorbingState):
     def __init__(self, config, tokenizer):
@@ -277,22 +273,6 @@ def stopgrad(x):
     return x.detach()
 
 
-def adaptive_l2_loss(error, gamma=0.5, c=1e-3):
-    """
-    Adaptive L2 loss: sg(w) * ||Δ||_2^2, where w = 1 / (||Δ||^2 + c)^p, p = 1 - γ
-    """
-    delta_sq = torch.mean(error**2, dim=(1, 2), keepdim=False)  # (B,)
-    p = 1.0 - gamma
-    w = 1.0 / (delta_sq + c).pow(p)
-    loss = delta_sq  # ||Δ||^2
-    return (stopgrad(w) * loss).mean()
-
-
-def mse_loss(error):
-    per_sample = (error**2).mean(dim=(1, 2))  # [B]
-    return per_sample.mean()
-
-
 class DUO_BASE(trainer_base.UniformState):
     def __init__(self, config, tokenizer):
         super().__init__(config, tokenizer)
@@ -430,8 +410,6 @@ class Integral(torch.autograd.Function):
         gamma_max = data["gamma_max"]
         gamma_min = data["gamma_min"]
         if (gamma_t.max() > gamma_max) or (gamma_t.min() < gamma_min):
-            # print('max:{} {}'.format(gamma_t.max(), gamma_max))
-            # print('min:{} {}'.format(gamma_t.min(), gamma_min))
             gamma_t = torch.clip(gamma_t, gamma_min, gamma_max)
         indices = torch.round(
             (data["num_points"] - 1) * (gamma_t - gamma_min) / (gamma_max - gamma_min)
@@ -502,13 +480,6 @@ class DUO(DUO_BASE):
     def _gamma_to_alphat(self, gamma_t):  # eq 10.
         integral = Integral.apply(gamma_t, self.integral_cache)
         return (self.vocab_size * integral - 1) / (self.vocab_size - 1)
-
-    def _prior_loss(self):
-        alpha_1 = self._gamma_to_alphat(torch.tensor(self.gamma_max))
-        loss = (alpha_1 + (1 - alpha_1) / self.vocab_size) * torch.log(
-            (self.vocab_size - 1) * alpha_1 + 1
-        ) + (1 - 1 / self.vocab_size) * (1 - alpha_1) * torch.log(1 - alpha_1)
-        return loss.item()
 
     def _q_xt_gaussian(self, x, gamma_t):
         """Computes the noisy sample xt."""
@@ -700,7 +671,6 @@ class Rectification(DUO):  # Training as duo, without curriculum
     def __init__(self, config, tokenizer):
         super().__init__(config, tokenizer)
         self.save_hyperparameters()
-        self.use_linear_schedule = config.algo.use_linear_schedule
         self.use_simple_loss = config.algo.use_simple_loss
         self.onestep_mode = config.algo.onestep_mode
         self.debug = getattr(config.algo, "debug", False)
@@ -812,12 +782,6 @@ class FLMBase(trainer_base.TrainerBase):
             and utils.fsspec_exists(config.checkpointing.resume_ckpt_path)
         )
 
-    def _validate_configuration(self):
-        pass
-
-    def training_step(self, batch, batch_idx):
-        return super().training_step(batch, batch_idx)
-
     def _process_sigma(self, sigma):
         if sigma.ndim == 1:
             sigma = sigma.unsqueeze(-1)
@@ -882,15 +846,6 @@ class FLMBase(trainer_base.TrainerBase):
         xT=None,
         given_t=None,
         not_sampling_t=False,
-    ):
-        raise NotImplementedError
-
-    def nll(
-        self,
-        input_tokens,
-        output_tokens,
-        current_accumulation_step=None,
-        train_mode=False,
     ):
         raise NotImplementedError
 
@@ -1084,14 +1039,6 @@ class FLMBase(trainer_base.TrainerBase):
                 if m.bias is not None:
                     m.bias.data.zero_()
 
-    @staticmethod
-    def _random_init_module(module, std=0.02):
-        for m in module.modules():
-            if isinstance(m, torch.nn.Linear):
-                m.weight.data.normal_(mean=0.0, std=std)
-                if m.bias is not None:
-                    m.bias.data.zero_()
-
 
 class FLM(FLMBase):
     def loss(
@@ -1204,11 +1151,6 @@ class FMLM(FLMBase):
             assert not self.config.algo.backprop_entmax_temp_lsd, (
                 "backprop_entmax_temp_lsd is not coded for LSD distillation"
             )
-
-    def forward(self, xt, sigma, sigma_prime=None, use_jvp_attn=False, **kwargs):
-        return super().forward(
-            xt, sigma, sigma_prime, use_jvp_attn=use_jvp_attn, **kwargs
-        )
 
     def forward_with_ema(self, *args, **kwargs):
         ema_to_use = self.ema
@@ -1699,7 +1641,6 @@ class FMLM_TwoModel(FLMBase):
 
     def __init__(self, config, tokenizer):
         super().__init__(config, tokenizer)
-        self.log_flag = False
         self.teacher_model = None
         self._is_resuming = (
             config.checkpointing.resume_from_ckpt
@@ -1725,10 +1666,6 @@ class FMLM_TwoModel(FLMBase):
         if hasattr(self.backbone, "output_layer"):
             self._zero_init_module(self.backbone.output_layer)
             print("Zero initialized student output_layer")
-
-    def _on_load_checkpoint_extra(self, checkpoint):
-        if self.config.mode == "sample_eval":
-            self._initialize_teacher()
 
     def on_train_start(self):
         super().on_train_start()
@@ -1865,11 +1802,6 @@ class FMLM_TwoStage(FLMBase):
         super().__init__(config, tokenizer)
         self.teacher_model_f = None
         self.teacher_model_g = None
-        self._is_resuming = (
-            config.checkpointing.resume_from_ckpt
-            and config.checkpointing.resume_ckpt_path is not None
-            and utils.fsspec_exists(config.checkpointing.resume_ckpt_path)
-        )
 
     def setup(self, stage: str):
         if self.teacher_model_f is None or self.teacher_model_g is None:

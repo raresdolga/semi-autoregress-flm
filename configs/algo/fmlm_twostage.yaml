@@ -12,7 +12,6 @@ causal_attention: False
 ignore_bos: False
 t_min: 0.0
 t_max: 1.0
-use_curriculum: False
 double_temb: True
 add_boundary: True
 learnable_loss_weighting: True

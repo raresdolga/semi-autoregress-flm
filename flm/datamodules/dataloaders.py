@@ -49,7 +49,6 @@ class RandomFaultTolerantSampler(torch.utils.data.RandomSampler):
     def load_state_dict(self, state_dict):
         self.generator.set_state(state_dict.get("random_state"))
         self.counter = state_dict["counter"]
-        # self.start_counter = self.counter
         self.restarting = True
 
     # TD [2022-08-28] Setting the len will cause PL to think there are only a few batches left per
@@ -58,7 +57,6 @@ class RandomFaultTolerantSampler(torch.utils.data.RandomSampler):
     def __iter__(self) -> typing.Iterator[int]:
         n = len(self.data_source)
 
-        self.state = self.generator.get_state()
         indices = torch.randperm(n, generator=self.generator).tolist()
 
         if not self.restarting:
@@ -95,7 +93,6 @@ class FaultTolerantDistributedSampler(torch.utils.data.DistributedSampler):
             # deterministically shuffle based on epoch and seed
             g = torch.Generator()
             g.manual_seed(self.seed + self.epoch)
-            # type: ignore[arg-type]
             indices = torch.randperm(len(self.dataset), generator=g).tolist()
         else:
             indices = list(range(len(self.dataset)))  # type: ignore[arg-type]
@@ -262,7 +259,6 @@ def get_dataloaders(
             # which is the fastest setting for a local mmap.
             persistent_workers=config.loader.num_workers > 0,
         )
-        train_loader.tokenizer = tokenizer
 
     if skip_valid:
         valid_loader = None

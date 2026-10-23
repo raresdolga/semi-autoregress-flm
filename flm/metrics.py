@@ -129,7 +129,6 @@ class TC:
         joints = {}
         for key, x0_x1_tup in groups.items():
             # x1_list is a tensor, shape each (1024)
-            # print(len(x1_list))
             # shape = (num_samples_for_this_group, 1024)
             group = torch.stack(x0_x1_tup, dim=0)
             T_val, sum_marginals, H_joint = self.compute_total_correlation_x1(group)
@@ -214,12 +213,9 @@ class Metrics:
         )
         metrics.set_dtype(torch.float64)
         self.train_nlls = metrics.clone(prefix="train/")
-        self.train_aux = BPD()
         self.valid_nlls = metrics.clone(prefix="val/")
-        self.valid_aux = BPD()
         self.gen_ppl = Perplexity()
         self.sample_entropy = torchmetrics.aggregation.MeanMetric()
-        self.unique_token_count = 0
         self.tc = TC()
         self.eval_ppl_batch_size = eval_ppl_batch_size
         self.gen_ppl_eval_model_name_or_path = gen_ppl_eval_model_name_or_path
@@ -234,25 +230,19 @@ class Metrics:
         self.gen_ppl = self.gen_ppl.to(*args, **kwargs)
         self.sample_entropy = self.sample_entropy.to(*args, **kwargs)
         self.train_nlls = self.train_nlls.to(*args, **kwargs)
-        self.train_aux = self.train_aux.to(*args, **kwargs)
         self.valid_nlls = self.valid_nlls.to(*args, **kwargs)
-        self.valid_aux = self.valid_aux.to(*args, **kwargs)
 
     def reset(self):
         self.gen_ppl.reset()
         self.sample_entropy.reset()
         self.train_nlls.reset()
-        self.train_aux.reset()
         self.valid_nlls.reset()
-        self.valid_aux.reset()
 
-    def update_train(self, nll, aux_loss, num_tokens):
+    def update_train(self, nll, num_tokens):
         self.train_nlls.update(nll, num_tokens)
-        self.train_aux.update(aux_loss, num_tokens)
 
-    def update_valid(self, nll, aux_loss, num_tokens):
+    def update_valid(self, nll, num_tokens):
         self.valid_nlls.update(nll, num_tokens)
-        self.valid_aux.update(aux_loss, num_tokens)
 
     @torch.no_grad()
     def _eval_retokenize(self, text_samples, max_length, device):
@@ -307,24 +297,6 @@ class Metrics:
             _, counts = torch.unique(sample, return_counts=True, sorted=False)
             entropy = torch.special.entr(counts.float() / counts.sum()).sum().item()
             self.sample_entropy.update(entropy)
-
-    @torch.no_grad()
-    def record_unique_tokens(self, samples):
-        """Record the count of unique tokens across all samples.
-
-        Args:
-            samples: torch.Tensor of shape (batch_size, seq_length)
-
-        Returns:
-            int: Number of unique tokens in the samples
-        """
-        unique_tokens = torch.unique(samples.flatten())
-        self.unique_token_count = len(unique_tokens)
-        return self.unique_token_count
-
-    def reset_unique_tokens(self):
-        """Reset unique token count."""
-        self.unique_token_count = 0
 
     @torch.no_grad()
     def record_generative_perplexity(

@@ -4,16 +4,11 @@ defaults:
   - /data: openwebtext  # switch to synthetic_alpha8 for debugging: set to /data: synthetic_alpha8
   - /model: small
   - /strategy: ddp
-  - /noise: log-linear
   - /lr_scheduler: constant_warmup
   - /prior: none
   - /algo: flm
 
 mode: train  # train / ppl_eval / sample_eval
-
-# di4c configs:
-is_di4c: False
-is_di4c_deterministic: True
 
 seed: 1
 
@@ -39,29 +34,20 @@ sampling:
   num_strides: 1
   num_reflow_samples: 50000 # for generating reflow dataset
   temperature: 1.0
-  solver: euler 
   gamma: 0.0
 
 training:
   loss_type: flow
-  pred_type: x0
   ema: 0.9999
   antithetic_sampling: True
-  importance_sampling: False
   sampling_eps: 1e-3
-  change_of_variables: False
   loss_precision: 'bf16'  # bf16, float32, float64
   finetune_path: ''
   not_sampling_t: False
-  load_ema: False  # load EMA parameters when finetuning
-  t_curriculum_steps: 100000
-  t_curriculum_min: 0.00
-  t_curriculum_max: 1.00
 
 eval:
   checkpoint_path: ''  # Used to evaluate a checkpoint after training.
   disable_ema: False
-  ema_decay: null  # If set, select matching EMA from checkpoint
   compute_generative_perplexity: True
   perplexity_batch_size: 8
   compute_perplexity_on_sanity: False
@@ -75,7 +61,6 @@ optim:
   beta1: 0.9
   beta2: 0.999
   eps: 1e-8
-  ln_tune: none
 
 trainer:
   _target_: lightning.Trainer

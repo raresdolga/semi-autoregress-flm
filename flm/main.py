@@ -249,15 +249,6 @@ def generate_reflow_dataset(diffusion_model, config, logger, tokenizer):
     if config.eval.disable_ema:
         logger.info("Disabling EMA.")
         model.ema = None
-    # if model.ema:
-    #   model.ema.store(itertools.chain(
-    #       model.backbone.parameters(),
-    #       model.noise.parameters()))
-    #   model.ema.copy_to(itertools.chain(
-    #       model.backbone.parameters(),
-    #       model.noise.parameters()))
-    #   model.backbone.eval()
-    #   model.noise.eval()
 
     test_ds = get_pseudo_dataloader(config, tokenizer, model)
     trainer = hydra.utils.instantiate(
@@ -430,7 +421,6 @@ def _train(diffusion_model, config, logger, tokenizer):
         strategy=hydra.utils.instantiate(config.strategy),
         logger=wandb_logger,
     )
-    # Force weights_only=False to allow full checkpoint restore (PyTorch 2.6 defaults torch.load to weights_only=True)
     trainer.fit(model, train_ds, valid_ds, ckpt_path=ckpt_path)
 
 
